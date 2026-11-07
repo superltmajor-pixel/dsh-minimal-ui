@@ -1,0 +1,50 @@
+{
+  "name": "dsh-minimal-ui",
+  "version": "0.10.33",
+  "private": true,
+  "type": "module",
+  "description": "A reading-focused, minimal interface for DeepSeek Harness.",
+  "license": "MIT",
+  "author": "superltmajor-pixel",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/superltmajor-pixel/dsh-minimal-ui.git"
+  },
+  "homepage": "https://github.com/superltmajor-pixel/dsh-minimal-ui#readme",
+  "bugs": "https://github.com/superltmajor-pixel/dsh-minimal-ui/issues",
+  "keywords": ["dsh-plugin", "deepseek-harness", "user-interface"],
+  "scripts": {
+    "test": "node tests/package-check.mjs && node tests/boot-check.mjs && node tests/metrics-check.mjs && node tests/guide-check.mjs && node tests/theme-check.mjs && node tests/todo-check.mjs"
+  },
+  "engines": {
+    "dsh": "=0.2.2-rc.1"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE",
+    "tests/*.mjs"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  }
+}
