@@ -1,14 +1,79 @@
 # 极简界面 · Minimal UI
 
-为 DeepSeek Harness 提供更安静、聚焦阅读的界面：收紧侧栏与排版、减少常驻按钮，并将常用会话信息集中到工具栏。
+为 DeepSeek Harness 提供更安静、聚焦阅读的界面：收紧侧栏与排版、减少常驻按钮，把常用会话信息集中到工具栏。
+
+<!-- TODO(截图)：主界面截图放在这里，形如 <img src="docs/screenshot-main.png" width="880" alt="极简界面的会话页"> -->
+
+## 理念：Less is more
+
+这个插件不新增功能，只做减法。三条原则贯穿全部改动：
+
+1. **常驻的东西越少越好**：能用悬停、键盘聚焦或一个图标表达的，就不占固定空间。
+2. **只在需要时出现**：辅助按钮、提示文案、时间戳默认安静，指针靠近或键盘聚焦才亮。
+3. **层级服务于阅读**：弱化元信息（时间、状态、计数），让正文成为页面上唯一的重点。
+
+后台可以多做，展示给用户的一定是关键且必要的信息。所以它调整的是官方界面已有的元素，不引入新的面板、新的入口或新的工作流。
 
 ## 功能
 
-- 调整侧栏、对话区、输入框、表格和代码的排版；常用操作在悬停或键盘聚焦时显示。
-- 在输入工具栏显示生成速度、缓存命中率和上下文占用，支持查看明细。
-- 为侧栏增加主题切换；右侧开始页的第三方工具入口可收进「更多工具」。
-- 给任务面板增加关闭按钮；折叠已修改文件列表，保留展开操作。
-- 失败或中断的最后一条用户消息可以回填到输入框编辑。回填不会删除原消息，也不会自动发送。
+**阅读优先的排版**
+
+- 中文改用 Noto Sans SC 替换微软雅黑，西文保留 Segoe UI；正文 15px、代码 13px。
+- 中文斜体改用楷体正体（中文没有真斜体，合成倾斜会把字拉歪）。
+- 表格数字等宽、首列收成内容宽；行内代码去掉灰底胶囊，只保留等宽字形。
+
+**更安静的对话区**
+
+- 会话内容列固定为宿主允许的最宽值，两侧栏收起后不再留大片空白。
+- 去掉页面级的第二条滚动条；滚动条常态透明，悬停才出现。
+- 内容顶边在标题栏交界处做渐隐，滚动时不被硬切；标题栏下方只有一道极轻阴影。
+- 用户气泡圆角与内边距收小；空态提示悬停或聚焦才显示。
+- 轮次导航条常态收在右边缘外，指针靠近才滑出。
+
+**收紧的输入框**
+
+- 发送按钮去掉蓝色圆盘，改为透明底 + 悬停时画一圈品牌色。
+- 输入区上提并压扁；模型名只留图标，权限控件图标化。
+- ＋菜单再次点击即收起；菜单背景强制不透明，不透过界面。
+
+**工具栏承载信息**
+
+- 输入工具栏用三个图标显示生成速度、缓存命中率和上下文占用，点开看明细，接近上限时变色提醒。
+- 会话标题行的四个状态项压成弱化文字，智能体团队与预设只留图标，计数裁到两位。
+
+**侧栏与开始页**
+
+- 去掉侧栏顶部那条通栏「新会话」（品牌行本身就是新会话入口）。
+- 搜索框、时间戳、分区标题悬停才显示；页脚新增主题切换按钮，与账户行对齐。
+- 右侧开始页隐藏大罗盘，第三方工具卡收进「更多工具」菜单并限高滚动；工具图标统一成线条风格。
+
+**可关闭、可折叠的面板**
+
+- 任务面板增加关闭按钮，状态用圆点表示。
+- 「已编辑 N 个文件」默认折叠成标题行，右上箭头展开。
+- 失败或中断的最后一条用户消息可以回填到输入框编辑，不删除原消息、不自动发送。
+
+**可拖动的设置弹窗**
+
+- 按住设置弹窗顶部的标题栏或按钮行即可移动整个窗口，松手停在原处；窗口始终留在可视区域内，窄屏全屏时不启用。
+
+## 与官方界面的差异
+
+插件不修改官方源码，全部通过注入样式和挂载自有组件实现。按区域对照：
+
+| 区域 | 官方默认 | 极简界面 |
+| --- | --- | --- |
+| 字体 | 微软雅黑 + Segoe UI，正文 14px | Noto Sans SC + Segoe UI，正文 15px |
+| 会话内容列 | 对话区宽度的 64%，上限 920px | 宿主允许的最宽值（列宽 − 176px，最小 640px） |
+| 滚动条 | 常驻可见 | 常态透明，悬停或聚焦显示；无页面级第二条 |
+| 会话顶边 | 内容在标题栏下方硬切 | 12px 渐隐 + 一道极轻阴影 |
+| 输入框 | 蓝色圆盘发送键，底部留白较大 | 透明底箭头 + 悬停蓝圈；上提并压扁 |
+| 工具条统计 | 速度、缓存、上下文三项常驻文字 | 三个图标按钮，点开看明细 |
+| 标题行状态 | 四个状态项带文字与计数 | 图标化 + 弱化文字，原文案挂为悬停提示 |
+| 侧栏 | 通栏新会话按钮，时间与搜索常驻 | 只留品牌行入口；辅助信息悬停显示 |
+| 开始页 | 居中罗盘 + 彩色插画图标 | 无罗盘，线条图标，第三方卡片收进菜单 |
+| 任务 / 更改 | 面板不可关闭，文件列表默认展开 | 可关闭；文件列表折叠成标题行 |
+| 设置弹窗 | 固定居中，不能移动 | 可拖动 |
 
 ## 兼容性
 
@@ -18,7 +83,7 @@
 
 ## 安装
 
-从 npm 安装（当前版本 `dsh-minimal-ui@0.10.33`）：
+从 npm 安装（当前版本 `dsh-minimal-ui@0.10.34`）：
 
 ```sh
 dsh plugin --profile web add dsh-minimal-ui
@@ -56,4 +121,6 @@ dsh plugin --profile web remove dsh-minimal-ui
 
 ## English
 
-Minimal UI is a reading-focused interface plugin for DeepSeek Harness. The current source targets the DSH 0.2.2-rc.1 Web UI and was developed on Windows; other versions and platforms have not been verified. It uses host-provided conversation state and tasks, and reads the last displayed user message when the edit action is used. The host may persist drafts and theme changes. No direct network requests or separate conversation storage were found in the plugin source; runtime network traffic has not been checked. See [MIT License](LICENSE).
+Minimal UI is a reading-focused interface plugin for DeepSeek Harness. It changes nothing the host already offers: it only tightens the layout, quiets persistent controls, and moves frequently used session information into the toolbar. The guiding rule is less is more — anything that can be shown on hover, on keyboard focus, or as a single icon does not get permanent space.
+
+The current source targets the DSH 0.2.2-rc.1 Web UI and was developed on Windows; other versions and platforms have not been verified. It uses host-provided conversation state and tasks, and reads the last displayed user message when the edit action is used. The host may persist drafts and theme changes. No direct network requests or separate conversation storage were found in the plugin source; runtime network traffic has not been checked. See [MIT License](LICENSE).

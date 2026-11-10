@@ -5,7 +5,7 @@ window.__ModuleLoader__.load({
     const bootMark = (tag, extra) => {
       try {
         if (!tag.startsWith('apply:throw ')) return;
-        console.error('[minimal-ui 0.10.33] ' + tag + (extra === void 0 ? '' : ' -> ' + String(extra)));
+        console.error('[minimal-ui 0.10.34] ' + tag + (extra === void 0 ? '' : ' -> ' + String(extra)));
       } catch (error) {}
     };
     const describeError = (error) => {
@@ -332,7 +332,7 @@ html, body { overflow: hidden; overscroll-behavior: none; }
 .GRgSLq_root:has(.minimalui-stats) > [data-composer-dock] { display: contents; }
 .minimalui-stats { display: inline-flex; align-items: center; gap: 0; flex: none; }
 .minimalui-stat { display: grid; place-items: center; width: 28px; height: 28px; padding: 0;
-  background: transparent; border: 0; border-radius: 6px; cursor: pointer;
+  background: transparent; border: 0; border-radius: var(--dsw-radius-sm); cursor: pointer;
   color: var(--dsw-alias-label-secondary); opacity: .6; }
 .minimalui-stat:hover, .minimalui-stat:focus-visible, .minimalui-stat[aria-expanded="true"] {
   opacity: 1; background: var(--dsw-alias-bg-layer-2); }
@@ -342,7 +342,7 @@ html, body { overflow: hidden; overscroll-behavior: none; }
 .minimalui-popup { position: fixed; inset: auto; margin: 0; z-index: 1200; box-sizing: border-box;
   max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow: auto;
   background: var(--dsw-alias-bg-overlay); color: var(--dsw-alias-label-primary);
-  border: 1px solid var(--dsw-alias-border-l1); border-radius: 10px; padding: 8px 10px;
+  border: 1px solid var(--dsw-alias-border-l1); border-radius: var(--dsw-radius-md); padding: 8px 10px;
   font-family: inherit; font-size: 12px; line-height: 20px; font-weight: 400; text-align: left; }
 .minimalui-popup[role="tooltip"] { white-space: nowrap; }
 .minimalui-popup[role="dialog"] { width: 270px; padding: 12px; }
@@ -388,7 +388,7 @@ html, body { overflow: hidden; overscroll-behavior: none; }
 .minimalui-todo-row { display: flex; align-items: center; gap: 6px; }
 .minimalui-todo-row > .DXuOLW_header { flex: 1 1 auto; min-width: 0; width: auto; }
 .minimalui-todo-close { display: grid; place-items: center; flex: none; width: 24px; height: 24px;
-  padding: 0; border: 0; border-radius: 6px; background: transparent; cursor: pointer;
+  padding: 0; border: 0; border-radius: var(--dsw-radius-sm); background: transparent; cursor: pointer;
   color: var(--dsw-alias-label-tertiary); }
 .minimalui-todo-close:hover,
 .minimalui-todo-close:focus-visible { background: var(--dsw-alias-interactive-bg-hover);
@@ -403,7 +403,7 @@ html, body { overflow: hidden; overscroll-behavior: none; }
 [data-changed-files] > .HOHHba_toggle { display: none; }
 [data-changed-files][data-minimal-ui-fold="closed"] > .HOHHba_list { display: none; }
 .minimalui-changes-toggle { position: absolute; top: 18px; right: 6px; width: 24px; height: 24px;
-  display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px;
+  display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--dsw-radius-sm);
   background: transparent; color: var(--dsw-alias-label-tertiary); cursor: pointer; opacity: .7; }
 .minimalui-changes-toggle:hover,
 .minimalui-changes-toggle:focus-visible { opacity: 1; background: var(--changes-hover, var(--dsw-alias-interactive-bg-hover)); }
@@ -452,6 +452,14 @@ html, body { overflow: hidden; overscroll-behavior: none; }
   white-space: nowrap; vertical-align: bottom;
 }
 .an3WzG_tabs { margin-top: 6px; }
+/* Session header row is intentionally left at the host default. The host's static
+   ".K0RNnq_moreButton" (aria-label 更多操作) menu only contains fixed session items
+   (复制会话为 Markdown / 下载 Session 日志 / 反馈); it does NOT auto-absorb the other
+   header cell buttons (agent-team .VBK9GG_root, agent-preset .dscfja_label, jobs
+   .Ag-ohG_trigger, open-in-app .mOxcpG_menuAnchor, forge .F3SIka_trigger, bottom panel
+   .nArs4W_toggleButton, context diagnostics .MFPsMa_headerButton). So hiding those cells
+   via CSS makes their actions unreachable, with no overflow fallback. Do not re-add a
+   blanket display:none block here. See 20-Projects/电脑维护.md 2026-11-08. */
 /* Sidebar foot: one round icon button for the host palette. The glyph is the
    affordance, not the state: a sun means "go light", a moon means "go dark", so the
    icon names what the click will do next. */
@@ -463,7 +471,7 @@ html, body { overflow: hidden; overscroll-behavior: none; }
   height: 28px;
   padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--dsw-radius-sm);
   background: none;
   color: var(--dsw-alias-label-secondary);
   cursor: pointer;
@@ -497,6 +505,27 @@ html, body { overflow: hidden; overscroll-behavior: none; }
   .minimalui-changes-toggle svg { transition: none; }
   .SNx2jG_frame { transition: none; }
 }
+/* Settings dialog drag: the shipped panel is a fixed, flex-centred box with no move
+   handler, so the plugin adds a window-style move. The top strip (title + header row)
+   is the grab handle; position lives in custom properties so React never owns the
+   value and a re-render cannot reset it. Narrow full-screen mode has nowhere to drag
+   to, so the listener skips it. */
+[data-shortcut-modal="settings"] {
+  transform: translate3d(var(--minimalui-settings-x, 0px), var(--minimalui-settings-y, 0px), 0);
+}
+[data-shortcut-modal="settings"].minimalui-settings-dragging {
+  transition: none !important;
+  will-change: transform;
+}
+[data-shortcut-modal="settings"] > [class*="_navTitle"],
+[data-shortcut-modal="settings"] > [class*="_header"] {
+  cursor: grab;
+}
+[data-shortcut-modal="settings"].minimalui-settings-dragging > [class*="_navTitle"],
+[data-shortcut-modal="settings"].minimalui-settings-dragging > [class*="_header"] {
+  cursor: grabbing;
+}
+[data-shortcut-modal="settings"] > [class*="_header"] button { cursor: pointer; }
 `;
     const statsNamespace = 'local-minimal-ui-stats';
     const dictionaries = {
@@ -1275,8 +1304,87 @@ html, body { overflow: hidden; overscroll-behavior: none; }
         },
       }, entry.label)));
     }
+    // The shipped settings dialog is a fixed, flex-centred panel, so it cannot be moved.
+    // This adds a window-style drag: grab the top strip (title + header row) and the panel
+    // follows the pointer, clamped inside the viewport so the title bar stays reachable.
+    // Everything lives in the plugin; no host source is touched. The panel is selected by
+    // its stable data attribute rather than the CSS-module hash, so a DSH upgrade that
+    // renames the module prefix leaves this working; only the top-strip suffix names
+    // (`_navTitle`/`_header`) are relied on, and they survive the prefix swap.
+    function installSettingsDrag(doc) {
+      const SELECTOR = '[data-shortcut-modal="settings"]';
+      const INTERACTIVE = 'button, a, input, textarea, select, [role="button"], [contenteditable="true"]';
+      const TOP_STRIP = 56; // the 54px header row plus a little slack
+      const MARGIN = 8;
+      let drag = null;
+      const stored = (panel, key) => {
+        const value = Number.parseFloat(panel.dataset[key] ?? '0');
+        return Number.isFinite(value) ? value : 0;
+      };
+      const fullScreen = (panel) => {
+        const rect = panel.getBoundingClientRect();
+        return rect.width >= window.innerWidth - 2 && rect.height >= window.innerHeight - 2;
+      };
+      const onDown = (event) => {
+        if (event.button !== 0 || event.defaultPrevented) return;
+        const panel = event.target?.closest?.(SELECTOR);
+        if (!panel || fullScreen(panel)) return;
+        // Never start a drag from a control: the close button and header actions keep
+        // their own clicks, and the nav/content below the strip stay untouched.
+        if (event.target.closest?.(INTERACTIVE)) return;
+        const rect = panel.getBoundingClientRect();
+        if (event.clientY - rect.top > TOP_STRIP) return;
+        const baseX = stored(panel, 'minimalUiDragX');
+        const baseY = stored(panel, 'minimalUiDragY');
+        drag = {
+          panel, id: event.pointerId,
+          startX: event.clientX, startY: event.clientY, baseX, baseY,
+          // Untranslated geometry, so clamping stays correct on a second drag.
+          left: rect.left - baseX, top: rect.top - baseY,
+          width: rect.width, height: rect.height,
+          moved: false,
+        };
+        panel.classList.add('minimalui-settings-dragging');
+        event.preventDefault();
+      };
+      const onMove = (event) => {
+        if (!drag || event.pointerId !== drag.id) return;
+        const dx = event.clientX - drag.startX;
+        const dy = event.clientY - drag.startY;
+        if (!drag.moved && Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+        drag.moved = true;
+        const minX = MARGIN - drag.left;
+        const maxX = window.innerWidth - MARGIN - drag.width - drag.left;
+        const minY = MARGIN - drag.top;
+        const maxY = window.innerHeight - MARGIN - drag.height - drag.top;
+        const x = Math.round(Math.min(maxX, Math.max(minX, drag.baseX + dx)));
+        const y = Math.round(Math.min(maxY, Math.max(minY, drag.baseY + dy)));
+        drag.panel.dataset.minimalUiDragX = String(x);
+        drag.panel.dataset.minimalUiDragY = String(y);
+        drag.panel.style.setProperty('--minimalui-settings-x', x + 'px');
+        drag.panel.style.setProperty('--minimalui-settings-y', y + 'px');
+      };
+      const stop = (event) => {
+        if (!drag || (event && event.pointerId !== drag.id)) return;
+        drag.panel.classList.remove('minimalui-settings-dragging');
+        drag = null;
+      };
+      doc.addEventListener('pointerdown', onDown, true);
+      doc.addEventListener('pointermove', onMove, true);
+      doc.addEventListener('pointerup', stop, true);
+      doc.addEventListener('pointercancel', stop, true);
+      return () => {
+        stop();
+        doc.removeEventListener('pointerdown', onDown, true);
+        doc.removeEventListener('pointermove', onMove, true);
+        doc.removeEventListener('pointerup', stop, true);
+        doc.removeEventListener('pointercancel', stop, true);
+      };
+    }
     function MinimalUI() {
       try { globalThis.__minimalUiMark?.('render:MinimalUI'); } catch (error) {}
+      // Document-level capture listeners, installed once and disposed with the cell.
+      React.useEffect(() => installSettingsDrag(document), []);
       // Watchdog: if the dock cell never mounts, still close the menu with the editor's
       // Escape route instead of silently doing nothing. The fallback no-ops as soon as
       // the controller-backed listener is installed.
@@ -1292,7 +1400,7 @@ html, body { overflow: hidden; overscroll-behavior: none; }
       }, []);
       // React owns the style tag: disabling the plugin unmounts and removes it.
       return React.createElement('style', {
-        'data-dsh-minimal-ui': '0.10.33',
+        'data-dsh-minimal-ui': '0.10.34',
       }, css);
     }
     bootMark('factory:plugin-ready');
