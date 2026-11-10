@@ -4,7 +4,7 @@
 
 ![极简界面演示：30 秒，6 个场景](https://raw.githubusercontent.com/superltmajor-pixel/dsh-minimal-ui/main/docs/demo.gif)
 
-30 秒演示：探索 → 拖动设置窗口 → 对话 → 命令菜单 → 工具面板 → 收束。另有 [1080p 原片（mp4，2.5 MB）](https://github.com/superltmajor-pixel/dsh-minimal-ui/blob/main/docs/deepseek-harness-motion.mp4)。
+30 秒演示：探索 → 拖动设置窗口 → 对话 → 命令菜单 → 工具面板 → 收束。
 
 ## 理念：Less is more
 
