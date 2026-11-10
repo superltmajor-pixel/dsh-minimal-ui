@@ -1,10 +1,10 @@
 # 极简界面 · Minimal UI
 
+**中文** · [English](https://github.com/superltmajor-pixel/dsh-minimal-ui/blob/main/README.en.md)
+
 为 DeepSeek Harness 提供更安静、聚焦阅读的界面：收紧侧栏与排版、减少常驻按钮，把常用会话信息集中到工具栏。
 
-![极简界面演示：30 秒，6 个场景](https://raw.githubusercontent.com/superltmajor-pixel/dsh-minimal-ui/main/docs/demo.gif)
-
-30 秒演示：探索 → 拖动设置窗口 → 对话 → 命令菜单 → 工具面板 → 收束。
+![极简界面演示](https://raw.githubusercontent.com/superltmajor-pixel/dsh-minimal-ui/main/docs/demo.gif)
 
 ## 理念：Less is more
 
@@ -120,9 +120,3 @@ dsh plugin --profile web remove dsh-minimal-ui
 ## 许可证
 
 本项目采用 [MIT License](LICENSE)。运行时调用的宿主软件、系统字体及其他独立组件适用其各自的许可证；本仓库不分发系统字体。
-
-## English
-
-Minimal UI is a reading-focused interface plugin for DeepSeek Harness. It changes nothing the host already offers: it only tightens the layout, quiets persistent controls, and moves frequently used session information into the toolbar. The guiding rule is less is more — anything that can be shown on hover, on keyboard focus, or as a single icon does not get permanent space.
-
-The current source targets the DSH 0.2.2-rc.1 Web UI and was developed on Windows; other versions and platforms have not been verified. It uses host-provided conversation state and tasks, and reads the last displayed user message when the edit action is used. The host may persist drafts and theme changes. No direct network requests or separate conversation storage were found in the plugin source; runtime network traffic has not been checked. See [MIT License](LICENSE).
