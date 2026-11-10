@@ -2,7 +2,9 @@
 
 为 DeepSeek Harness 提供更安静、聚焦阅读的界面：收紧侧栏与排版、减少常驻按钮，把常用会话信息集中到工具栏。
 
-<!-- TODO(截图)：主界面截图放在这里，形如 <img src="docs/screenshot-main.png" width="880" alt="极简界面的会话页"> -->
+[![极简界面演示：30 秒，6 个场景](https://raw.githubusercontent.com/superltmajor-pixel/dsh-minimal-ui/main/docs/demo-poster.jpg)](https://github.com/superltmajor-pixel/dsh-minimal-ui/blob/main/docs/deepseek-harness-motion.mp4)
+
+30 秒演示：探索 → 拖动设置窗口 → 对话 → 命令菜单 → 工具面板 → 收束。点击封面播放（mp4，2.5 MB）。
 
 ## 理念：Less is more
 
