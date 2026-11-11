@@ -5,7 +5,7 @@ window.__ModuleLoader__.load({
     const bootMark = (tag, extra) => {
       try {
         if (!tag.startsWith('apply:throw ')) return;
-        console.error('[minimal-ui 0.10.47] ' + tag + (extra === void 0 ? '' : ' -> ' + String(extra)));
+        console.error('[minimal-ui 0.10.48] ' + tag + (extra === void 0 ? '' : ' -> ' + String(extra)));
       } catch (error) {}
     };
     const describeError = (error) => {
@@ -1484,6 +1484,18 @@ html, body { overflow: hidden; overscroll-behavior: none; }
         lastInputWasKeyboard = false;
         const target = event.target;
         if (!target?.closest) return;
+        // The attach (+) button lives inside the folded bar too. Expanding before the
+        // host's click handler runs gives the command menu a full-height anchor, which
+        // is what makes it open reliably instead of intermittently doing nothing.
+        const foldedCard = target.closest(CARD);
+        if (foldedCard?.hasAttribute('data-minimalui-collapsed') && target.closest('.GRgSLq_add')) {
+          const foldedEditor = foldedCard.querySelector(EDITOR);
+          if (foldedEditor) {
+            engaged.add(foldedEditor);
+            sync(foldedEditor);
+          }
+          return;
+        }
         // Popovers, stats, and every real control keep the current state: opening a
         // stat popover while writing must not fold the box back.
         if (target.closest(POPOVER) || target.closest(INTERACTIVE) || target.closest('.minimalui-stats')) return;
@@ -1566,7 +1578,7 @@ html, body { overflow: hidden; overscroll-behavior: none; }
       }, []);
       // React owns the style tag: disabling the plugin unmounts and removes it.
       return React.createElement('style', {
-        'data-dsh-minimal-ui': '0.10.47',
+        'data-dsh-minimal-ui': '0.10.48',
       }, css);
     }
     bootMark('factory:plugin-ready');
