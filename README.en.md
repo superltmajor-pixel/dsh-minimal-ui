@@ -85,7 +85,7 @@ Because it changes layout, it may conflict with other plugins that modify the sa
 
 ## Install
 
-From npm (current version `dsh-minimal-ui@0.10.35`):
+From npm (current version `dsh-minimal-ui@0.10.36`):
 
 ```sh
 dsh plugin --profile web add dsh-minimal-ui

@@ -85,7 +85,7 @@
 
 ## 安装
 
-从 npm 安装（当前版本 `dsh-minimal-ui@0.10.35`）：
+从 npm 安装（当前版本 `dsh-minimal-ui@0.10.36`）：
 
 ```sh
 dsh plugin --profile web add dsh-minimal-ui

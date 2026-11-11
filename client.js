@@ -5,7 +5,7 @@ window.__ModuleLoader__.load({
     const bootMark = (tag, extra) => {
       try {
         if (!tag.startsWith('apply:throw ')) return;
-        console.error('[minimal-ui 0.10.35] ' + tag + (extra === void 0 ? '' : ' -> ' + String(extra)));
+        console.error('[minimal-ui 0.10.36] ' + tag + (extra === void 0 ? '' : ' -> ' + String(extra)));
       } catch (error) {}
     };
     const describeError = (error) => {
@@ -188,13 +188,15 @@ table, th, td { font-variant-numeric: tabular-nums; }
 .an3WzG_headerUtilities .mOxcpG_menuAnchor:has([data-open-target="directory"]) { display: none; }
 /* Markdown tables sit in a wrapper the host gives no margin, so a table collapses against the
   16px paragraph margin above it. Give the block real space above and below (compact tool output
-  keeps its own tighter rule, which wins by specificity). */
-._tableScroll_rve47_199 { margin: 20px 0; }
-/* A one-character "#" column inherits the host 100px min-width, so the number drifts far from
-  the cell that follows, while 10px cell padding leaves the rows cramped. Let the first column
-  shrink to its content and loosen the rows so they read as separate records. */
-._tableScroll_rve47_199 :is(th, td) { padding-top: 14px; padding-bottom: 14px; }
-._tableScroll_rve47_199 :is(th, td):first-child { min-width: 0; padding-right: 12px; }
+  keeps its own tighter rule, which wins by specificity). Matched by substring because the
+  wrapper class carries a per-build hash. */
+[class*="tableScroll"] { margin: 20px 0; }
+/* A one-character "#" column inherited the host 100px min-width in older builds, so the number
+  drifted far from the cell that follows; the padding also leaves rows cramped. Let the first
+  column shrink to its content and loosen the rows so they read as separate records. The
+  wrapper class is matched by substring: its build hash changed in 0.2.2-rc.2. */
+[class*="tableScroll"] :is(th, td) { padding-top: 14px; padding-bottom: 14px; }
+[class*="tableScroll"] :is(th, td):first-child { min-width: 0; padding-right: 12px; }
 /* Conversation column scrollbar: the host keeps a stable gutter and paints the track even on a
   page with nothing to scroll (the new-session hero centers its content in an auto-scroller), so a
   dead-looking bar floats at the window edge. Keep the gutter and the wheel behaviour, but paint
@@ -1400,7 +1402,7 @@ html, body { overflow: hidden; overscroll-behavior: none; }
       }, []);
       // React owns the style tag: disabling the plugin unmounts and removes it.
       return React.createElement('style', {
-        'data-dsh-minimal-ui': '0.10.35',
+        'data-dsh-minimal-ui': '0.10.36',
       }, css);
     }
     bootMark('factory:plugin-ready');
