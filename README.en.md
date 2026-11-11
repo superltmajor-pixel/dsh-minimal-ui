@@ -36,6 +36,7 @@ Work can happen in the background, but what reaches the user should be the key, 
 
 - The send button loses its blue disc: transparent background, a brand-colored ring on hover.
 - The composer sits higher and flatter; the model name keeps only its icon and the permission control becomes an icon.
+- An empty composer folds into one blank bar (only attach + and model), expanding on a click in the blank area or keyboard focus; it stays open while typing and folds back on a blank click or outside click.
 - The + menu closes on a second click; menu backgrounds are forced opaque so the UI never shows through.
 
 **The toolbar carries the information**

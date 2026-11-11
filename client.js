@@ -5,7 +5,7 @@ window.__ModuleLoader__.load({
     const bootMark = (tag, extra) => {
       try {
         if (!tag.startsWith('apply:throw ')) return;
-        console.error('[minimal-ui 0.10.36] ' + tag + (extra === void 0 ? '' : ' -> ' + String(extra)));
+        console.error('[minimal-ui 0.10.47] ' + tag + (extra === void 0 ? '' : ' -> ' + String(extra)));
       } catch (error) {}
     };
     const describeError = (error) => {
@@ -362,14 +362,47 @@ html, body { overflow: hidden; overscroll-behavior: none; }
 .GRgSLq_card { padding-top: 6px; gap: 8px; }
 .GRgSLq_input { min-height: 32px; }
 .GRgSLq_row { padding-top: 0; padding-bottom: 4px; }
-/* Empty-state hint stays quiet until hovered or focused, hero included.
-   Reveal at 70% opacity so the theme-aware hint remains visually subdued. */
+/* The empty-state hint is hidden by default and appears only when the pointer enters the
+   composer. The host autofocuses the editor on every page, so a :focus-within reveal would
+   make the box look pre-filled the moment it opens; hover is the only trigger now. */
 .GRgSLq_root [data-composer-placeholder] { opacity: 0; transition: opacity 140ms ease; }
 .GRgSLq_root .GRgSLq_input p:last-child::after { opacity: 0; transition: opacity 140ms ease; }
 .GRgSLq_card:hover [data-composer-placeholder],
-.GRgSLq_card:focus-within [data-composer-placeholder],
-.GRgSLq_card:hover .GRgSLq_input p:last-child::after,
-.GRgSLq_card:focus-within .GRgSLq_input p:last-child::after { opacity: .7; }
+.GRgSLq_card:hover .GRgSLq_input p:last-child::after { opacity: .7; }
+/* The host autofocuses the composer, so an empty box shows a blinking caret before the
+   pointer ever arrives. installCaretQuiet marks each editor with data-minimalui-typed as
+   soon as it holds text; until then the caret stays invisible and returns on hover. This
+   applies to every composer (new session and existing conversations alike). */
+[data-composer-input]:not([data-minimalui-typed]) { caret-color: transparent !important; }
+.GRgSLq_card:hover [data-composer-input],
+[data-composer-input][data-minimalui-typed] {
+  caret-color: var(--dsw-alias-state-business-primary) !important;
+}
+/* Collapsed composer: with nothing typed the box folds down to its toolbar row, so the
+   empty state is one quiet strip (+ / model / send) instead of a tall blank editor. The
+   editor keeps zero height rather than display:none so it can still take focus on click;
+   installCaretQuiet sets the marker and drops the host's mount autofocus. */
+.GRgSLq_card[data-minimalui-collapsed] { padding-top: 8px; gap: 0; }
+.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_row { min-height: 40px; align-items: center; }
+.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_scroll { max-height: 0; overflow: hidden; }
+.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_input {
+  min-height: 0; height: 0; padding-top: 0; padding-bottom: 0;
+}
+/* Folded state keeps only the two anchors — attach (+) and model — so the bar reads as one
+   blank strip instead of a full toolbar. Permission/Plan/left-slot chips and the send arrow
+   stay out of the way until the user actually writes; a stop button (svg rect) is always
+   kept, so a running turn can still be interrupted while the composer sits empty. */
+.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_tools > *:not(.GRgSLq_add) { display: none; }
+.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_tools > *:nth-child(n+2) { display: none; }
+.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_modes { display: none; }
+/* Our own stats trio (speed / cache / context) lives in a dock slot beside the row,
+   so scope the hide to the whole composer root, not just the card. */
+.GRgSLq_root:has(.GRgSLq_card[data-minimalui-collapsed]) .minimalui-stats { display: none; }
+/* Keep + visible even if the host wraps it in a tooltip element. */
+.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_tools > :has(.GRgSLq_add) { display: flex !important; }
+.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_standardControls > *:not(:last-child) { display: none; }
+.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_activity { display: none; }
+.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_primary:not(:has(svg rect)) { display: none; }
 /* Permission control: icon only; its label surfaces on hover/focus without reflow. */
 .GRgSLq_modes ._86kJGG_trigger { position: relative; }
 .GRgSLq_modes ._86kJGG_triggerLabel {
@@ -1383,10 +1416,141 @@ html, body { overflow: hidden; overscroll-behavior: none; }
         doc.removeEventListener('pointercancel', stop, true);
       };
     }
+    // Hide the caret in an empty composer without touching focus: the host autofocuses the
+    // editor on every page, and a blurred box cannot be typed into. CSS alone can only see
+    // "hovered", not "has text", so track emptiness here and let the stylesheet read the
+    // marker. Runs for every composer, in new sessions and existing conversations alike.
+    function installCaretQuiet(doc) {
+      const EDITOR = '[data-composer-input]';
+      const CARD = '.GRgSLq_card';
+      // Editors the user has deliberately engaged (clicked the bar or focused by keyboard).
+      // The host autofocuses the editor on mount; without this, an empty box could never
+      // stay folded, so autofocus is ignored and the first real gesture turns it on.
+      const engaged = new WeakSet();
+      // Which modality drove the latest interaction. Focus that follows a mouse click is
+      // the host's autofocus and must not unfold the bar; focus from a key press (Tab) is
+      // the user, so it counts.
+      let lastInputWasKeyboard = false;
+      const sync = (editor) => {
+        if (!editor) return;
+        const hasText = (editor.textContent ?? '').trim().length > 0;
+        if (hasText) editor.setAttribute('data-minimalui-typed', '');
+        else editor.removeAttribute('data-minimalui-typed');
+        const card = editor.closest?.(CARD);
+        if (!card) return;
+        if (hasText || engaged.has(editor)) card.removeAttribute('data-minimalui-collapsed');
+        else card.setAttribute('data-minimalui-collapsed', '');
+      };
+      const onInput = (event) => {
+        const editor = event.target?.closest?.(EDITOR);
+        if (editor) sync(editor);
+      };
+      const onFocusIn = (event) => {
+        const editor = event.target?.closest?.(EDITOR);
+        if (!editor) return;
+        if (!engaged.has(editor) && (editor.textContent ?? '').trim().length === 0 && !lastInputWasKeyboard) {
+          // Programmatic mount autofocus: drop it so the folded bar shows no focus ring.
+          try { editor.blur(); } catch (error) {}
+          return;
+        }
+        engaged.add(editor);
+        sync(editor);
+      };
+      const POPOVER = '.minimalui-popup, [role="dialog"], [role="menu"], [role="listbox"], .minimalui-stats, [data-composer-dock], [data-composer-stat]';
+      const keepOpen = (editor, node) => {
+        const card = editor.closest?.(CARD);
+        return !!node && ((card && card.contains(node)) || !!node.closest?.(POPOVER));
+      };
+      const onFocusOut = (event) => {
+        const editor = event.target?.closest?.(EDITOR);
+        if (!editor) return;
+        // Defer: a pointerdown that re-focuses this editor must not flash it closed.
+        setTimeout(() => {
+          if (doc.activeElement === editor) return;
+          // Clicking a button/slot inside the bar (attach, mode, model, stats, send) or
+          // opening one of our popovers moves focus out of the editor — that is not a
+          // reason to fold the bar back; only an empty editor losing focus to somewhere
+          // outside the composer is.
+          if (keepOpen(editor, doc.activeElement) || keepOpen(editor, event.relatedTarget)) {
+            engaged.add(editor);
+            return;
+          }
+          engaged.delete(editor);
+          sync(editor);
+        }, 0);
+      };
+      const INTERACTIVE = 'button, a, select, input, textarea, [role="button"], [contenteditable="true"]';
+      const onPointerDown = (event) => {
+        lastInputWasKeyboard = false;
+        const target = event.target;
+        if (!target?.closest) return;
+        // Popovers, stats, and every real control keep the current state: opening a
+        // stat popover while writing must not fold the box back.
+        if (target.closest(POPOVER) || target.closest(INTERACTIVE) || target.closest('.minimalui-stats')) return;
+        const card = target.closest(CARD);
+        if (card) {
+          const editor = card.querySelector(EDITOR);
+          if (!editor) return;
+          if (card.hasAttribute('data-minimalui-collapsed')) {
+            // A click on the folded bar's empty space: unfold and start writing.
+            engaged.add(editor);
+            sync(editor);
+            try { editor.focus(); } catch (error) {}
+            return;
+          }
+          // Expanded: clicking the blank area (not the editor/controls) folds it back.
+          if ((editor.textContent ?? '').trim().length === 0) {
+            engaged.delete(editor);
+            sync(editor);
+            try { editor.blur(); } catch (error) {}
+          }
+          return;
+        }
+        // A click outside every composer: fold any expanded-but-empty bar.
+        doc.querySelectorAll(CARD).forEach((c) => {
+          if (c.hasAttribute('data-minimalui-collapsed')) return;
+          const ed = c.querySelector(EDITOR);
+          if (ed && (ed.textContent ?? '').trim().length === 0) {
+            engaged.delete(ed);
+            sync(ed);
+          }
+        });
+      };
+      const onKeyDown = () => { lastInputWasKeyboard = true; };
+      const observer = new MutationObserver((records) => {
+        for (const record of records) {
+          const target = record.target;
+          const owner = target?.nodeType === 1 ? target.closest?.(EDITOR) : target?.parentElement?.closest?.(EDITOR);
+          if (owner) { sync(owner); continue; }
+          for (const added of record.addedNodes ?? []) {
+            if (added.nodeType !== 1) continue;
+            if (added.matches?.(EDITOR)) sync(added);
+            added.querySelectorAll?.(EDITOR).forEach(sync);
+          }
+        }
+      });
+      observer.observe(doc.body, { childList: true, subtree: true });
+      doc.addEventListener('input', onInput, true);
+      doc.addEventListener('focusin', onFocusIn, true);
+      doc.addEventListener('focusout', onFocusOut, true);
+      doc.addEventListener('pointerdown', onPointerDown, true);
+      doc.addEventListener('keydown', onKeyDown, true);
+      doc.querySelectorAll(EDITOR).forEach(sync);
+      return () => {
+        observer.disconnect();
+        doc.removeEventListener('input', onInput, true);
+        doc.removeEventListener('focusin', onFocusIn, true);
+        doc.removeEventListener('focusout', onFocusOut, true);
+        doc.removeEventListener('pointerdown', onPointerDown, true);
+        doc.removeEventListener('keydown', onKeyDown, true);
+      };
+    }
     function MinimalUI() {
       try { globalThis.__minimalUiMark?.('render:MinimalUI'); } catch (error) {}
       // Document-level capture listeners, installed once and disposed with the cell.
       React.useEffect(() => installSettingsDrag(document), []);
+      // Keep the composer caret quiet while the box is empty (see installCaretQuiet).
+      React.useEffect(() => installCaretQuiet(document), []);
       // Watchdog: if the dock cell never mounts, still close the menu with the editor's
       // Escape route instead of silently doing nothing. The fallback no-ops as soon as
       // the controller-backed listener is installed.
@@ -1402,7 +1566,7 @@ html, body { overflow: hidden; overscroll-behavior: none; }
       }, []);
       // React owns the style tag: disabling the plugin unmounts and removes it.
       return React.createElement('style', {
-        'data-dsh-minimal-ui': '0.10.36',
+        'data-dsh-minimal-ui': '0.10.47',
       }, css);
     }
     bootMark('factory:plugin-ready');
