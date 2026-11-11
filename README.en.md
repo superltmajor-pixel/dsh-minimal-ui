@@ -79,13 +79,13 @@ The plugin never modifies official source; everything is injected styles and mou
 
 ## Compatibility
 
-The current source targets the **DSH 0.2.2-rc.1 Web UI** and was developed on the Windows desktop client. The local version has been accepted by its author in their own DSH; the npm package has been verified at the package level (unpacked files match the local build, all six self-checks pass), but interface acceptance in a fresh profile has not been done. The plugin depends on some host-internal layout and CSS class names, so other DSH versions and platforms are unverified; the package's compatibility declaration is currently limited to that version.
+The current source targets the **DSH 0.2.2-rc.2 Web UI** (also verified on 0.2.2-rc.1) and was developed on the Windows desktop client. The local version has been accepted by its author in their own DSH; the npm package has been verified at the package level (unpacked files match the local build, all six self-checks pass), but interface acceptance in a fresh profile has not been done. The plugin depends on some host-internal layout and CSS class names, so other DSH versions and platforms are unverified; the package declares `>=0.2.2-rc.1 <0.2.3-0`.
 
 Because it changes layout, it may conflict with other plugins that modify the same areas. If you previously installed a local development build, disable it first so two copies do not adjust the same interface.
 
 ## Install
 
-From npm (current version `dsh-minimal-ui@0.10.34`):
+From npm (current version `dsh-minimal-ui@0.10.35`):
 
 ```sh
 dsh plugin --profile web add dsh-minimal-ui

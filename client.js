@@ -5,7 +5,7 @@ window.__ModuleLoader__.load({
     const bootMark = (tag, extra) => {
       try {
         if (!tag.startsWith('apply:throw ')) return;
-        console.error('[minimal-ui 0.10.34] ' + tag + (extra === void 0 ? '' : ' -> ' + String(extra)));
+        console.error('[minimal-ui 0.10.35] ' + tag + (extra === void 0 ? '' : ' -> ' + String(extra)));
       } catch (error) {}
     };
     const describeError = (error) => {
@@ -453,13 +453,13 @@ html, body { overflow: hidden; overscroll-behavior: none; }
 }
 .an3WzG_tabs { margin-top: 6px; }
 /* Session header row is intentionally left at the host default. The host's static
-   ".K0RNnq_moreButton" (aria-label 更多操作) menu only contains fixed session items
-   (复制会话为 Markdown / 下载 Session 日志 / 反馈); it does NOT auto-absorb the other
-   header cell buttons (agent-team .VBK9GG_root, agent-preset .dscfja_label, jobs
-   .Ag-ohG_trigger, open-in-app .mOxcpG_menuAnchor, forge .F3SIka_trigger, bottom panel
-   .nArs4W_toggleButton, context diagnostics .MFPsMa_headerButton). So hiding those cells
-   via CSS makes their actions unreachable, with no overflow fallback. Do not re-add a
-   blanket display:none block here. See 20-Projects/电脑维护.md 2026-11-08. */
+   overflow menu (aria-label 更多操作) only contains fixed session items
+   (复制会话为 Markdown / 下载 Session 日志 / 反馈); it does NOT absorb the other header
+   cell buttons (agent team, agent preset, jobs, open-in-app, forge, bottom panel,
+   context diagnostics). So hiding those cells via CSS makes their actions unreachable,
+   with no overflow fallback. Their hashed class names change between releases, which is
+   why this note names them by role instead. Do not re-add a blanket display:none block
+   here. See 20-Projects/电脑维护.md 2026-11-08. */
 /* Sidebar foot: one round icon button for the host palette. The glyph is the
    affordance, not the state: a sun means "go light", a moon means "go dark", so the
    icon names what the click will do next. */
@@ -1400,7 +1400,7 @@ html, body { overflow: hidden; overscroll-behavior: none; }
       }, []);
       // React owns the style tag: disabling the plugin unmounts and removes it.
       return React.createElement('style', {
-        'data-dsh-minimal-ui': '0.10.34',
+        'data-dsh-minimal-ui': '0.10.35',
       }, css);
     }
     bootMark('factory:plugin-ready');

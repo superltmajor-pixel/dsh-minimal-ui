@@ -1,6 +1,6 @@
 {
   "name": "dsh-minimal-ui",
-  "version": "0.10.34",
+  "version": "0.10.35",
   "type": "module",
   "description": "A reading-focused, minimal interface for DeepSeek Harness.",
   "license": "MIT",
@@ -16,7 +16,7 @@
     "test": "node tests/package-check.mjs && node tests/boot-check.mjs && node tests/metrics-check.mjs && node tests/guide-check.mjs && node tests/theme-check.mjs && node tests/todo-check.mjs"
   },
   "engines": {
-    "dsh": "=0.2.2-rc.1"
+    "dsh": ">=0.2.2-rc.1 <0.2.3-0"
   },
   "publishConfig": {
     "access": "public",

@@ -11,7 +11,7 @@ assert.match(manifest.version, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-
 assert.notEqual(manifest.private, true, 'publication must not be blocked by the private flag');
 assert.equal(manifest.publishConfig?.access, 'public', 'publication must target the public registry');
 assert.equal(manifest.license, 'MIT');
-assert.equal(manifest.engines.dsh, '=0.2.2-rc.1');
+assert.equal(manifest.engines.dsh, '>=0.2.2-rc.1 <0.2.3-0');
 assert.equal(manifest.dsh.bundle.patch, './cordis.patch.yml');
 assert.equal(manifest.dsh.client.platform, 'web');
 assert.match(read('cordis.patch.yml'), /name:\s*['"]?dsh-minimal-ui['"]?(?:\s|$)/);
