@@ -118,6 +118,10 @@ A filled-back draft may be persisted by the host; clicking the theme toggle save
 
 A source review found no code that makes direct network requests or stores conversation data separately; runtime network traffic has not been verified. Data handling, network behaviour, and logging of the host and other plugins are up to them.
 
+## Changelog
+
+See [CHANGELOG.md](https://github.com/superltmajor-pixel/dsh-minimal-ui/blob/main/CHANGELOG.md); every release is also tagged on [GitHub Releases](https://github.com/superltmajor-pixel/dsh-minimal-ui/releases).
+
 ## License
 
 This project is released under the [MIT License](LICENSE). The host software, system fonts, and other independent components it uses at runtime keep their own licenses; this repository does not distribute system fonts.

@@ -118,6 +118,10 @@ dsh plugin --profile web remove dsh-minimal-ui
 
 对插件源码的检查未发现直接发起网络请求或独立持久化会话数据的代码；尚未进行运行时网络流量验证。宿主及其他插件的数据处理、网络行为和日志由它们各自决定。
 
+## 更新日志
+
+见 [CHANGELOG.md](https://github.com/superltmajor-pixel/dsh-minimal-ui/blob/main/CHANGELOG.md)；每个版本也在 [GitHub Releases](https://github.com/superltmajor-pixel/dsh-minimal-ui/releases) 打了 tag。
+
 ## 许可证
 
 本项目采用 [MIT License](LICENSE)。运行时调用的宿主软件、系统字体及其他独立组件适用其各自的许可证；本仓库不分发系统字体。
