@@ -67,10 +67,20 @@ table, th, td { font-variant-numeric: tabular-nums; }
   padding: 0 !important;
   color: var(--dsw-alias-label-secondary) !important;
 }
-/* Composer candidate menu: retain the theme hue but force an opaque surface.
-   The stock menu uses a translucent MenuSurface, which exposes transcript text. */
+/* Composer menus share the translucent MenuSurface material: the stock fill token
+   (--dsw-menu-surface-fill) is only ~64-70% opaque and the panel adds a backdrop blur,
+   so transcript text behind it shows through. The candidate list and the slash-command
+   pickers (/permission, /model — PopupSelectView, mounted inside this overlay) both sit
+   inside [data-composer-overlay], so force an opaque fill there. The model menu is
+   portalled to <body>, so its stable class is repeated as a fallback. */
+[data-composer-overlay],
+.j99sVW_card,
+._9r0rkG_menu {
+  --dsw-menu-surface-fill: rgb(from var(--dsw-alias-bg-overlay) r g b / 1);
+  --dsw-specific-menu: var(--dsw-menu-surface-fill);
+  --dsw-menu-backdrop-filter: none;
+}
 [data-composer-overlay] [data-trigger-menu] {
-  --dsw-specific-menu: rgb(from var(--dsw-alias-bg-overlay) r g b / 1);
   background: var(--dsw-specific-menu) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -1187,13 +1197,18 @@ html, body { overflow: hidden; overscroll-behavior: none; }
           const candidates = sibling.querySelectorAll('button, [role="button"]');
           for (let index = 0; index < candidates.length; index += 1) {
             const rect = boxOf(candidates[index]);
-            if (rect && rect.height > 30 && rect.width > 60) return { row, trigger: rect };
+            if (rect && rect.height > 30 && rect.width > 60) {
+              return { row, trigger: rect, triggerEl: candidates[index] };
+            }
           }
         }
-        const first = sibling ? boxOf(sibling.firstElementChild) : null;
+        const firstEl = sibling ? sibling.firstElementChild : null;
+        const first = boxOf(firstEl);
         // The rail state renders a 36px account glyph, not a labelled row: keep the
         // inline fallback rather than parking the button over a collapsed row.
-        if (first && first.height > 30 && first.width > 60) return { row, trigger: first };
+        if (first && first.height > 30 && first.width > 60) {
+          return { row, trigger: first, triggerEl: firstEl };
+        }
         node = row;
       }
       return null;
@@ -1211,6 +1226,7 @@ html, body { overflow: hidden; overscroll-behavior: none; }
         const row = initial.row;
         const previousPosition = row.style.position;
         const frames = [];
+        let triggerEl = null;
         const unseat = () => {
           row.style.position = previousPosition;
           button.style.position = '';
@@ -1237,6 +1253,7 @@ html, body { overflow: hidden; overscroll-behavior: none; }
           // shift it left of those indicators when they are mounted.
           const trailing = Math.round(base.right - match.trigger.right);
           button.style.right = `${trailing > 4 ? trailing + 6 : 8}px`;
+          triggerEl = match.triggerEl || null;
           setSeated(true);
         };
         place();
@@ -1253,13 +1270,28 @@ html, body { overflow: hidden; overscroll-behavior: none; }
           observer.observe(row);
           if (row.nextElementSibling) observer.observe(row.nextElementSibling);
           if (row.parentElement) observer.observe(row.parentElement);
+          if (triggerEl) observer.observe(triggerEl);
         }
+        // The connection / "new version" indicators mount inside the settings row after
+        // the first measurement, and mounting them shrinks the flex trigger without
+        // changing any observed box, so a pure resize watch never re-seats the icon and
+        // it stays at its stale right edge, under the freshly appeared chip. Watch the
+        // foot subtree so appearances / removals re-run place(), and re-read the trigger
+        // element for the width watch each time.
+        const mutation = typeof MutationObserver === 'function' && row.parentElement
+          ? new MutationObserver(() => {
+            if (triggerEl && observer) observer.observe(triggerEl);
+            place();
+          })
+          : null;
+        if (mutation) mutation.observe(row.parentElement, { childList: true, subtree: true });
         window.addEventListener('resize', place);
         return () => {
           for (const frame of frames) {
             if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame);
           }
           if (observer) observer.disconnect();
+          if (mutation) mutation.disconnect();
           window.removeEventListener('resize', place);
           row.style.position = previousPosition;
           button.style.position = '';
