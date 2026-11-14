@@ -4,6 +4,25 @@
 
 ## [未发布]
 
+## [0.10.52] - 2026-11-14
+
+### 新增与变更
+
+- Windows 桌面标题栏的「应用 / 编辑」收进单一汉堡入口。两项仅点击或通过 Enter、Space、右方向键打开对应原生菜单，悬停不展开；上下方向键切换入口，编辑菜单打开前恢复原输入焦点与选区。
+- 汉堡下拉卡片使用不透明明暗配色与 Segoe UI 14px；打开原生菜单时保留主卡片并高亮当前入口，原生菜单关闭后一起收起。
+- 弹层增加 150ms 淡入与轻微上浮，侧栏过渡统一到 240ms 曲线，输入框折叠改为淡入淡出；新增的弹层与输入框动画尊重减少动态效果偏好。
+
+### 修复
+
+- 插件图标在暗色主题下保持可见，兼容宿主以图片加载 SVG 的方式。
+- 用户消息下的时间与复制按钮静止隐藏，悬停或键盘聚焦时显示，覆盖普通输入、steering 和问题答复卡片；触屏保持可见，助手回复保持原行为。
+- 清理旧版用户消息元信息的内联样式；刷新桌面 preload 留存的标题栏样式和旧事件绑定，避免升级后仍显示旧灰色卡片。
+
+### 已知限制
+
+- Windows 原生菜单打开后会接管鼠标，此时不能直接通过主卡片再次点击取消或切换到另一入口。需先关闭原生菜单（例如按 Escape），再重新打开汉堡菜单选择另一入口；统一自绘子菜单及桌面命令接口尚未实现。
+- 浏览器隔离检查不能模拟操作系统菜单的输入接管；全新 profile 的桌面界面验收尚未完成。
+
 ## [0.10.51] - 2026-11-14
 
 ### 修复
@@ -76,7 +95,10 @@
 
 - 首个公开版本：更安静的排版与侧栏，图标化底栏与工具统计，任务面板与「已编辑文件」折叠，开始页整理等。
 
-[未发布]: https://github.com/superltmajor-pixel/dsh-minimal-ui/compare/v0.10.49...HEAD
+[未发布]: https://github.com/superltmajor-pixel/dsh-minimal-ui/compare/v0.10.52...HEAD
+[0.10.52]: https://github.com/superltmajor-pixel/dsh-minimal-ui/compare/v0.10.51...v0.10.52
+[0.10.51]: https://github.com/superltmajor-pixel/dsh-minimal-ui/compare/v0.10.50...v0.10.51
+[0.10.50]: https://github.com/superltmajor-pixel/dsh-minimal-ui/compare/v0.10.49...v0.10.50
 [0.10.49]: https://github.com/superltmajor-pixel/dsh-minimal-ui/compare/v0.10.48...v0.10.49
 [0.10.48]: https://github.com/superltmajor-pixel/dsh-minimal-ui/compare/v0.10.47...v0.10.48
 [0.10.47]: https://github.com/superltmajor-pixel/dsh-minimal-ui/compare/v0.10.36...v0.10.47

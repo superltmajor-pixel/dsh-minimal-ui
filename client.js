@@ -5,7 +5,7 @@ window.__ModuleLoader__.load({
     const bootMark = (tag, extra) => {
       try {
         if (!tag.startsWith('apply:throw ')) return;
-        console.error('[minimal-ui 0.10.49] ' + tag + (extra === void 0 ? '' : ' -> ' + String(extra)));
+        console.error('[minimal-ui 0.10.52] ' + tag + (extra === void 0 ? '' : ' -> ' + String(extra)));
       } catch (error) {}
     };
     const describeError = (error) => {
@@ -571,7 +571,100 @@ html, body { overflow: hidden; overscroll-behavior: none; }
   cursor: grabbing;
 }
 [data-shortcut-modal="settings"] > [class*="_header"] button { cursor: pointer; }
+/* ---- Motion layer (accumulated) -------------------------------------------------
+   Two surfaces felt abrupt: popover cards popped with only a fade, and the sidebars
+   changed width on mixed timings. Keep the host's timing model but give cards a short
+   rise and pull the sidebar durations onto one curve. Every rule below is scoped to
+   stable data-* attributes (not the hashed class names) and gated to
+   prefers-reduced-motion: no-preference so reduced-motion users keep instant
+   transitions. See 20-Projects/电脑维护.md 2026-11-14. */
+:root {
+  --mui-ease-out: cubic-bezier(.16, 1, .3, 1);
+  --mui-ease-in: cubic-bezier(.4, 0, 1, 1);
+  --mui-dur-pop: 150ms;
+  --mui-dur-panel: 240ms;
+  --mui-dur-collapse: 200ms;
+}
+/* Popover / menu cards: the host fades the children of [data-menu-phase=enter] > *;
+   layer a small rise + settle so the menu lands instead of flashing. We target the
+   data attribute rather than the hashed surface class (the hash suffix changes). */
+@media (prefers-reduced-motion: no-preference) {
+  [data-menu-phase="enter"] > * {
+    animation: mui-pop-in var(--mui-dur-pop) var(--mui-ease-out) both !important;
+    transform-origin: top center;
+  }
+  [data-menu-phase="dismiss"] > *,
+  [data-menu-phase="replace"] > * {
+    animation: mui-pop-out 110ms var(--mui-ease-in) both !important;
+  }
+}
+@keyframes mui-pop-in {
+  from { opacity: 0; transform: translateY(-3px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes mui-pop-out {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateY(-2px) scale(.99); }
+}
+/* Sidebars: the host animates the left frame's grid columns and the right
+   (dsh-better-sidebar) panels through these shared duration/ease variables. Rescoping
+   them keeps both sidebars on one 240ms curve; the drag path still forces
+   transition:none upstream, so resizing stays instant. */
+[data-animating] {
+  --ds-transition-duration-slow: var(--mui-dur-panel);
+  --ds-ease-in-out: var(--mui-ease-out);
+}
+[data-dsh-better-sidebar] {
+  --ds-transition-duration-slow: var(--mui-dur-panel);
+  --ds-transition-duration: 180ms;
+  --ds-ease-in-out: var(--mui-ease-out);
+}
+/* Composer card: fade only, so the folded strip does not hard-cut; the height fold
+   itself is left to the host's own max-height/height rules to avoid fighting the
+   editor scroll area. */
+@media (prefers-reduced-motion: no-preference) {
+  .GRgSLq_scroll, .GRgSLq_input { transition: opacity 140ms ease; }
+}
+.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_scroll,
+.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_input { opacity: 0; }
 `;
+    // Question answers are user-style bubbles too, but use QuestionReply's own row/actions
+    // (BfLV8a_*) under question-reply, not MessageIconActions under user/steering.
+    // Keep these selectors explicitly user-scoped: assistant turn-tail behaviour is untouched.
+    const USER_META_CSS = `
+@media (hover: hover) {
+  :root :is([data-chat-flow-kind="user"], [data-chat-flow-kind="steering"], [data-chat-flow-kind="question-reply"])
+    :is(.LOmM4q_userRow, .BfLV8a_row) > :is(._1KfHza_actions, .BfLV8a_actions) {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 120ms ease;
+  }
+  :root :is([data-chat-flow-kind="user"], [data-chat-flow-kind="steering"], [data-chat-flow-kind="question-reply"])
+    :is(.LOmM4q_userRow, .BfLV8a_row):is(:hover, :focus-within) > :is(._1KfHza_actions, .BfLV8a_actions) {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root :is([data-chat-flow-kind="user"], [data-chat-flow-kind="steering"], [data-chat-flow-kind="question-reply"])
+    :is(.LOmM4q_userRow, .BfLV8a_row) > :is(._1KfHza_actions, .BfLV8a_actions) {
+    transition: none !important;
+  }
+}
+`;
+    function installUserMetaReveal() {
+      // Migrate the previous inline implementation, including markers left by hot reload.
+      // CSS now handles new/virtualized rows and focus state without observers or timers.
+      for (const action of document.querySelectorAll('[data-mui-meta="1"]')) {
+        for (const property of ['opacity', 'pointer-events', 'transition']) action.style.removeProperty(property);
+        action.removeAttribute('data-mui-meta');
+      }
+      const style = document.createElement('style');
+      style.dataset.minimaluiUserMeta = '';
+      style.textContent = USER_META_CSS;
+      document.head.appendChild(style);
+      return () => style.remove();
+    }
     const statsNamespace = 'local-minimal-ui-stats';
     const dictionaries = {
       // Host locale ids are exactly "zh" and "en"; a "zh-CN" key would fall back to English.
@@ -1612,15 +1705,313 @@ html, body { overflow: hidden; overscroll-behavior: none; }
       }, []);
       // React owns the style tag: disabling the plugin unmounts and removes it.
       return React.createElement('style', {
-        'data-dsh-minimal-ui': '0.10.49',
+        'data-dsh-minimal-ui': '0.10.52',
       }, css);
     }
     bootMark('factory:plugin-ready');
+    // Fold the desktop's Windows caption menubar (应用 / 编辑) into one hamburger icon whose
+    // dropdown offers both menus. The desktop preload mounts an open-shadow-DOM host
+    // [data-windows-menu] into this document; we restyle it from the page without touching
+    // host source. The original two buttons stay in place (same rect as the icon, invisible)
+    // so their click handlers still open the real native popups; the icon's dropdown just
+    // forwards to them.
+    const CAPTION_MENU_STYLE = `
+      [role=menubar] { position: relative !important; gap: 0 !important; }
+      button[data-minimalui-caption-native] {
+        position: absolute !important; left: 0 !important; top: 0 !important;
+        width: 30px !important; height: 28px !important; min-width: 0 !important;
+        padding: 0 !important; margin: 0 !important;
+        opacity: 0 !important; pointer-events: none !important;
+      }
+      button[data-minimalui-caption-trigger] {
+        position: relative; width: 30px; height: 28px; min-width: 30px;
+        padding: 0; border: 0; border-radius: 6px; background: transparent;
+        color: var(--dsw-alias-label-secondary, #c9ccd1);
+        font: inherit; font-size: 0; cursor: default;
+      }
+      button[data-minimalui-caption-trigger]:hover,
+      button[data-minimalui-caption-trigger][aria-expanded='true'] {
+        background: var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,.18));
+        color: var(--dsw-alias-label-primary, #ffffff);
+      }
+      button[data-minimalui-caption-trigger]::before {
+        content: ""; position: absolute; left: 50%; top: 50%;
+        width: 14px; height: 2px; border-radius: 1px;
+        background: currentColor; transform: translate(-50%, -50%);
+        box-shadow: 0 -5px 0 currentColor, 0 5px 0 currentColor;
+      }
+      [data-minimalui-caption-panel] {
+        position: absolute; top: calc(100% + 2px); left: 0; z-index: 100000;
+        box-sizing: border-box; min-width: 176px; padding: 8px 0; border-radius: 16px;
+        background: light-dark(#fff, #1f1f1f);
+        color: light-dark(#1f1f1f, #e3e3e3);
+        border: 1px solid light-dark(rgba(0,0,0,.06), rgba(255,255,255,.08));
+        box-shadow: 0 6px 18px rgba(0,0,0,.25);
+        font: 14px/20px "Segoe UI", system-ui, sans-serif;
+      }
+      [data-minimalui-caption-panel][hidden] { display: none !important; }
+      .mrow {
+        position: relative; display: flex; align-items: center; justify-content: space-between;
+        gap: 24px; padding: 8px 24px; border-radius: 0;
+        color: inherit; font: inherit; cursor: default; white-space: nowrap;
+      }
+      .mrow:hover, .mrow:focus-visible, .mrow[aria-expanded='true'] {
+        background: light-dark(#f2f2f2, #3d3d3d);
+      }
+      .mrow:focus-visible { outline: 2px solid Highlight; outline-offset: -2px; }
+      .mrow .mlabel { flex: 0 0 auto; }
+      .mrow .arrow { font-size: 15px; line-height: 1; opacity: .65; }
+    `;
+    function installWindowsCaptionMenu() {
+      if (typeof document === 'undefined') return () => {};
+      let shadowObserver = null;
+      let nativeStateObserver = null;
+      let styledHost = null;
+      let wiredTrigger = null;
+      // Restore the composer's focus and selection before handing Edit to the
+      // desktop so native commands still target the original editor.
+      let lastEditable = null;
+      let lastSel = null;
+      const captureEditable = (el) => {
+        lastEditable = el;
+        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+          lastSel = { start: el.selectionStart, end: el.selectionEnd, dir: el.selectionDirection };
+        } else {
+          const selection = document.getSelection();
+          lastSel = selection && selection.rangeCount
+            ? Array.from({ length: selection.rangeCount }, (_, i) => selection.getRangeAt(i).cloneRange())
+            : [];
+        }
+      };
+      const onFocusOut = (event) => {
+        const target = event.composedPath()[0];
+        if (target instanceof HTMLElement && (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target.matches('[contenteditable="true"]'))) {
+          captureEditable(target);
+        }
+      };
+      document.addEventListener('focusout', onFocusOut, true);
+      const restoreEditable = () => {
+        if (lastEditable === null || !lastEditable.isConnected) return;
+        try {
+          lastEditable.focus({ preventScroll: true });
+          if (lastEditable instanceof HTMLInputElement || lastEditable instanceof HTMLTextAreaElement) {
+            if (lastSel && lastSel.start != null) lastEditable.setSelectionRange(lastSel.start, lastSel.end, lastSel.dir ?? undefined);
+          } else if (Array.isArray(lastSel) && lastSel.length > 0) {
+            const selection = document.getSelection();
+            if (selection) {
+              selection.removeAllRanges();
+              for (const range of lastSel) selection.addRange(range);
+            }
+          }
+        } catch (error) { /* selection restore is best-effort */ }
+      };
+      const closeHostPanel = (host) => {
+        const shadow = host?.shadowRoot;
+        if (!shadow) return;
+        shadow.querySelector('[data-minimalui-caption-panel]')?.setAttribute('hidden', '');
+        shadow.querySelector('button[data-minimalui-caption-trigger]')?.setAttribute('aria-expanded', 'false');
+      };
+      const wire = (host) => {
+        const shadow = host.shadowRoot;
+        if (shadow === null) return;
+        const bar = shadow.querySelector('[role=menubar]');
+        if (bar === null) return;
+        let style = shadow.querySelector('style[data-minimal-ui-caption]');
+        if (style === null) {
+          style = document.createElement('style');
+          style.setAttribute('data-minimal-ui-caption', '');
+          shadow.appendChild(style);
+        }
+        // A desktop reload can preserve the preload's shadow root. Refresh its
+        // stylesheet too, instead of silently keeping a previous plugin revision.
+        if (style.textContent !== CAPTION_MENU_STYLE) style.textContent = CAPTION_MENU_STYLE;
+        const natives = [...bar.querySelectorAll(':scope > button')]
+          .filter((button) => !button.hasAttribute('data-minimalui-caption-trigger'));
+        if (natives.length < 2) return;
+        for (const native of natives) native.setAttribute('data-minimalui-caption-native', '');
+        const [appBtn, editBtn] = natives;
+        let trigger = bar.querySelector(':scope > button[data-minimalui-caption-trigger]');
+        // DOM listeners close over their original implementation. Replace a
+        // surviving old trigger/panel once, keeping this installation's own nodes.
+        if (trigger !== null && trigger !== wiredTrigger) {
+          trigger.remove();
+          bar.querySelector(':scope > [data-minimalui-caption-panel]')?.remove();
+          trigger = null;
+        }
+        if (trigger === null) {
+          trigger = document.createElement('button');
+          trigger.type = 'button';
+          trigger.setAttribute('data-minimalui-caption-trigger', '');
+          trigger.setAttribute('role', 'menuitem');
+          trigger.setAttribute('aria-haspopup', 'menu');
+          trigger.setAttribute('aria-expanded', 'false');
+          trigger.setAttribute('aria-label', (bar.getAttribute('aria-label') || '菜单'));
+          trigger.tabIndex = 0;
+          bar.appendChild(trigger);
+        }
+        let panel = bar.querySelector(':scope > [data-minimalui-caption-panel]');
+        if (panel === null) {
+          panel = document.createElement('div');
+          panel.setAttribute('data-minimalui-caption-panel', '');
+          panel.setAttribute('hidden', '');
+          bar.appendChild(panel);
+        }
+        if (trigger.__minimaluiCaptionWired) return;
+        wiredTrigger = trigger;
+        trigger.__minimaluiCaptionWired = true;
+        // Open one native popup anchored just to the right of a dropdown row, using the
+        // hidden native button's own handler (it reads its rect synchronously before
+        // awaiting IPC). A transform shifts the anchor without fighting the !important CSS.
+        const openNative = (target, item) => {
+          try {
+            if (natives.some((native) => native.getAttribute('aria-expanded') === 'true')) return;
+            const base = target.getBoundingClientRect();
+            const row = item.getBoundingClientRect();
+            const dx = Math.round(panel.getBoundingClientRect().right - base.left);
+            const dy = Math.round(row.top - base.bottom);
+            target.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+            target.click();
+            target.style.transform = '';
+          } catch (error) {
+            target.style.transform = '';
+          }
+        };
+        const syncLabels = () => {
+          const rows = [
+            [(appBtn.textContent || '').trim() || '应用', appBtn],
+            [(editBtn.textContent || '').trim() || '编辑', editBtn],
+          ];
+          panel.replaceChildren(...rows.map(([label, nativeTarget], index) => {
+            const row = document.createElement('div');
+            row.className = 'mrow';
+            row.setAttribute('role', 'menuitem');
+            row.setAttribute('aria-haspopup', 'menu');
+            row.setAttribute('aria-expanded', 'false');
+            row.tabIndex = 0;
+            const lbl = document.createElement('span'); lbl.className = 'mlabel'; lbl.textContent = label;
+            const arrow = document.createElement('span'); arrow.className = 'arrow'; arrow.textContent = '›';
+            arrow.setAttribute('aria-hidden', 'true');
+            row.append(lbl, arrow);
+            const activate = () => {
+              if (panel.hidden) return;
+              if (nativeTarget === editBtn) restoreEditable();
+              openNative(nativeTarget, row);
+            };
+            // Both native menus require explicit activation: hovering never takes
+            // over the pointer or prevents reaching the other row.
+            row.addEventListener('click', (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              activate();
+            });
+            row.addEventListener('keydown', (event) => {
+              if (event.key === 'ArrowRight' || event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                activate();
+              } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                const next = (index + (event.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length;
+                panel.querySelectorAll(':scope > .mrow')[next]?.focus();
+              }
+            });
+            return row;
+          }));
+        };
+        const open = () => {
+          syncLabels();
+          panel.removeAttribute('hidden');
+          trigger.setAttribute('aria-expanded', 'true');
+        };
+        const close = () => {
+          panel.setAttribute('hidden', '');
+          trigger.setAttribute('aria-expanded', 'false');
+        };
+        // The preload exposes each native popup's lifetime on its original
+        // button. Keep our parent visible until that popup is dismissed.
+        let nativeWasOpen = false;
+        const syncNativeState = () => {
+          const active = natives.findIndex((native) => native.getAttribute('aria-expanded') === 'true');
+          const rows = panel.querySelectorAll(':scope > .mrow');
+          rows.forEach((row, index) => row.setAttribute('aria-expanded', String(index === active)));
+          if (nativeWasOpen && active === -1) close();
+          nativeWasOpen = active !== -1;
+        };
+        nativeStateObserver?.disconnect();
+        nativeStateObserver = new MutationObserver(syncNativeState);
+        for (const native of natives) {
+          nativeStateObserver.observe(native, { attributes: true, attributeFilter: ['aria-expanded'] });
+        }
+        trigger.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (panel.hasAttribute('hidden')) open();
+          else close();
+        });
+        trigger.addEventListener('keydown', (event) => {
+          if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            open();
+            panel.querySelector(':scope > .mrow')?.focus();
+          } else if (event.key === 'Escape') {
+            close();
+          }
+        });
+        close();
+      };
+      const apply = () => {
+        const host = document.querySelector('div[data-windows-menu]');
+        if (host === null) return;
+        wire(host);
+        styledHost = host;
+        if (shadowObserver === null) {
+          shadowObserver = new MutationObserver(() => {
+            if (!host.isConnected) return;
+            if (host.shadowRoot?.querySelector('button[data-minimalui-caption-trigger]') == null) {
+              wire(host);
+            }
+          });
+          shadowObserver.observe(host.shadowRoot, { childList: true });
+        }
+      };
+      apply();
+      const bodyObserver = new MutationObserver(() => apply());
+      if (document.body !== null) bodyObserver.observe(document.body, { childList: true });
+      // Click outside / Escape closes the dropdown; composedPath keeps it correct even
+      // though the menu lives inside the desktop preload's shadow root.
+      const onPointer = (event) => {
+        if (styledHost === null || !styledHost.isConnected) return;
+        if (event.composedPath().includes(styledHost)) return;
+        closeHostPanel(styledHost);
+      };
+      const onKey = (event) => {
+        if (event.key === 'Escape' && styledHost !== null && styledHost.isConnected) closeHostPanel(styledHost);
+      };
+      document.addEventListener('pointerdown', onPointer, true);
+      document.addEventListener('keydown', onKey, true);
+      return () => {
+        bodyObserver.disconnect();
+        if (shadowObserver !== null) shadowObserver.disconnect();
+        nativeStateObserver?.disconnect();
+        document.removeEventListener('pointerdown', onPointer, true);
+        document.removeEventListener('keydown', onKey, true);
+        document.removeEventListener('focusout', onFocusOut, true);
+        if (styledHost !== null && styledHost.isConnected) {
+          const shadow = styledHost.shadowRoot;
+          shadow?.querySelector('style[data-minimal-ui-caption]')?.remove();
+          shadow?.querySelector('button[data-minimalui-caption-trigger]')?.remove();
+          shadow?.querySelector('[data-minimalui-caption-panel]')?.remove();
+          for (const native of shadow?.querySelectorAll('button[data-minimalui-caption-native]') ?? []) {
+            native.removeAttribute('data-minimalui-caption-native');
+          }
+        }
+      };
+    }
     return {
       inject: ['slots', 'locale'],
       apply(ctx) {
         try {
         bootMark('apply:enter', [typeof ctx.slots, typeof ctx.slots?.inject, typeof ctx.get, typeof ctx.effect, typeof ctx.locale?.register].join(','));
+        ctx.effect(() => installUserMetaReveal());
         // Both sidebars open at their narrowest allowed width, and the resize handles
         // stay live: only the layout store's untouched startup values are replaced.
         ctx.effect(() => {
@@ -1792,6 +2183,8 @@ html, body { overflow: hidden; overscroll-behavior: none; }
             if (typeof disposeSlot === 'function') disposeSlot();
           };
         });
+        // Collapse the desktop Windows caption menubar (应用 / 编辑) into one hamburger icon.
+        ctx.effect(() => installWindowsCaptionMenu());
         bootMark('apply:exit');
         } catch (minimalUiError) {
           bootMark('apply:throw ' + describeError(minimalUiError));

@@ -19,10 +19,20 @@ const React = {
 };
 
 const timers = [];
+const styles = new Set();
+const listeners = new Map();
+const observers = new Set();
 const document = {
-  head: { appendChild: () => {}, },
-  createElement: (tag) => ({ tag, dataset: {}, textContent: '', remove() {} }),
+  body: {},
+  head: { appendChild: (node) => { styles.add(node); } },
+  createElement: (tag) => ({ tag, dataset: {}, textContent: '', remove() { styles.delete(this); } }),
   querySelector: () => null,
+  querySelectorAll: () => [],
+  addEventListener: (type, fn) => {
+    if (!listeners.has(type)) listeners.set(type, new Set());
+    listeners.get(type).add(fn);
+  },
+  removeEventListener: (type, fn) => { listeners.get(type)?.delete(fn); },
 };
 
 const errors = [];
@@ -33,6 +43,10 @@ const context = vm.createContext({
   requestAnimationFrame: () => 1,
   cancelAnimationFrame: () => {},
   ResizeObserver: function ResizeObserver() { this.observe = () => {}; this.disconnect = () => {}; },
+  MutationObserver: function MutationObserver() {
+    this.observe = (target) => { assert.ok(target, 'observer needs a real fixture target'); observers.add(this); };
+    this.disconnect = () => { observers.delete(this); };
+  },
   KeyboardEvent: function KeyboardEvent(type, init) { Object.assign(this, init ?? {}); this.type = type; },
 });
 
@@ -92,8 +106,16 @@ assert.ok(registered.includes('conversation.input.left#local-minimal-ui-stats'),
 assert.ok(timers.length >= 2, 'theme and composer probes should be scheduled');
 assert.ok(timers.filter((t) => t.ms === 200).length >= 2, 'probes must use the 200ms retry cadence');
 
+// The new document effects must install without a desktop caption host, then clean up.
+assert.equal(styles.size, 1, 'user metadata stylesheet must install during boot');
+assert.ok([...styles][0].textContent.includes('question-reply'), 'stylesheet includes question answers');
+assert.ok(listeners.get('focusout')?.size, 'caption focus capture must install');
+assert.ok(observers.size, 'caption mount observer must install without a caption host');
 // The disposers must run cleanly with those services still absent.
 for (const dispose of disposers) dispose();
+assert.equal(styles.size, 0, 'document styles must not leak after disposal');
+assert.equal(observers.size, 0, 'document observers must disconnect after disposal');
+assert.ok([...listeners.values()].every((entries) => entries.size === 0), 'document listeners must not leak');
 assert.equal(errors.length, 0, 'normal startup must not emit diagnostic errors');
 assert.throws(() => plugin.apply({ ...ctx, effect: () => { throw new Error('simulated initialization failure'); } }),
   /simulated initialization failure/);
