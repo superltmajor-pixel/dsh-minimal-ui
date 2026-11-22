@@ -174,9 +174,8 @@ table, th, td { font-variant-numeric: tabular-nums; }
    under it calls the same action twice and reads as a second header. Hide only the wide variant (the
    one that renders a label span); the collapsed rail keeps its icon button. */
 .wtg9ga_newSession:has(.wtg9ga_newSessionLabel) { display: none; }
-/* With that card gone the panel list hugs the brand row; give the gap back on the wide rail only,
-   enough that the first panel row lines up with the first card of the right guide column. */
-.wtg9ga_root:not(.wtg9ga_collapsed) .wtg9ga_panelList { margin-top: 44px; }
+/* Keep a small gap below the brand when the wide New Session card is hidden. */
+.wtg9ga_root:not(.wtg9ga_collapsed) .wtg9ga_panelList { margin-top: 28px; }
 /* Right guide: the shipped layout centres the card stack in the panel, which drops the first card
    far below the sidebar's first row. Start the stack at the top instead and pull it up to the line. */
 .p2k40q_guide { justify-content: flex-start; padding-top: 43px; }
@@ -218,13 +217,14 @@ table, th, td { font-variant-numeric: tabular-nums; }
 .an3WzG_scrollBody:focus-within::-webkit-scrollbar-thumb { background: var(--dsw-alias-scrollbar-bg-l2); }
 .an3WzG_scrollBody::-webkit-scrollbar-thumb:hover { background: var(--dsw-alias-scrollbar-hover-l2); }
 
-/* Transcript width: without a dragged preference the host caps the column at 64% of the
-  conversation area (clamped to 680-920px), so collapsing both sidebars only buys blank margins
-  instead of a wider conversation. Pin it to the widest the host itself allows - its drag handle
-  maxes out at the area width minus CONTENT_EDGE_BUDGET (176px), floored at CONTENT_MIN (640px).
-  Mirroring that formula reuses the host's own geometry variable, so the column is as wide as the
-  handle can ever be dragged, never wider. */
-.an3WzG_body { --dsh-chat-content-width: max(640px, calc(var(--dsh-conversation-column-width, 0px) - 176px)) !important; }
+/* Transcript width: default to the widest the host allows (area width minus CONTENT_EDGE_BUDGET
+  176px, floored at CONTENT_MIN 640px) so collapsing both sidebars widens the conversation instead
+  of leaving blank margins - but stay draggable. The host publishes the dragged preference as
+  --dsh-chat-user-width (persisted in localStorage); feeding it back through this variable keeps
+  the host's own resize handles working, so the column starts at the wide default and can be
+  freely dragged afterwards. Note !important only guards --dsh-chat-content-width against the
+  host's own .body rule; it does not block inheriting --dsh-chat-user-width from .root. */
+.an3WzG_body { --dsh-chat-content-width: var(--dsh-chat-user-width, max(640px, calc(var(--dsh-conversation-column-width, 0px) - 176px))) !important; }
 
 /* The empty new-session page must not scroll at all: a page with nothing below it should not
   drift under the wheel. Only the hero phase is pinned; a session with real content keeps its
@@ -342,7 +342,8 @@ html, body { overflow: hidden; overscroll-behavior: none; }
 .GRgSLq_root:has(.minimalui-stats) [data-composer-dock] .A6Bq1a_root { display: none; }
 /* Flatten only the verified dock while the replacement is mounted. Other entries survive. */
 .GRgSLq_root:has(.minimalui-stats) > [data-composer-dock] { display: contents; }
-.minimalui-stats { display: inline-flex; align-items: center; gap: 0; flex: none; }
+.minimalui-stats { display: inline-flex; align-items: center; gap: 0; flex: none;
+  max-height: 28px; overflow: hidden; }
 .minimalui-stat { display: grid; place-items: center; width: 28px; height: 28px; padding: 0;
   background: transparent; border: 0; border-radius: var(--dsw-radius-sm); cursor: pointer;
   color: var(--dsw-alias-label-secondary); opacity: .6; }
@@ -388,16 +389,19 @@ html, body { overflow: hidden; overscroll-behavior: none; }
 [data-composer-input][data-minimalui-typed] {
   caret-color: var(--dsw-alias-state-business-primary) !important;
 }
-/* Collapsed composer: with nothing typed the box folds down to its toolbar row, so the
-   empty state is one quiet strip (+ / model / send) instead of a tall blank editor. The
-   editor keeps zero height rather than display:none so it can still take focus on click;
-   installCaretQuiet sets the marker and drops the host's mount autofocus. */
+/* Fold keeps the transcript above perfectly still while the visible card really
+   shrinks: installCaretQuiet pins the composer seat's outer height to the expanded
+   value, so the scroll content height never changes and only the card's own box
+   folds (the scroll port itself is a 1fr <-> 0fr grid accordion). */
 .GRgSLq_card[data-minimalui-collapsed] { padding-top: 8px; gap: 0; }
-.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_row { min-height: 40px; align-items: center; }
-.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_scroll { max-height: 0; overflow: hidden; }
-.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_input {
-  min-height: 0; height: 0; padding-top: 0; padding-bottom: 0;
-}
+/* Constant toolbar floor in BOTH states: the expanded row is ~38px (34px send
+   button + 4px pad), so a collapsed-only 40px floor made the row jump +2px at
+   the first fold frame. Same floor everywhere = no instant height change. */
+.GRgSLq_card .GRgSLq_row { min-height: 40px; }
+.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_scroll { opacity: 0; pointer-events: none; }
+/* A frozen seat keeps its pre-fold height while the card shrinks; bottom-align the
+   card so the fold reads as its top edge coming down onto the toolbar. */
+[data-composer-seat]:has(.GRgSLq_root) { justify-content: flex-end; }
 /* Folded state keeps only the two anchors — attach (+) and model — so the bar reads as one
    blank strip instead of a full toolbar. Permission/Plan/left-slot chips and the send arrow
    stay out of the way until the user actually writes; a stop button (svg rect) is always
@@ -405,9 +409,15 @@ html, body { overflow: hidden; overscroll-behavior: none; }
 .GRgSLq_card[data-minimalui-collapsed] .GRgSLq_tools > *:not(.GRgSLq_add) { display: none; }
 .GRgSLq_card[data-minimalui-collapsed] .GRgSLq_tools > *:nth-child(n+2) { display: none; }
 .GRgSLq_card[data-minimalui-collapsed] .GRgSLq_modes { display: none; }
-/* Our own stats trio (speed / cache / context) lives in a dock slot beside the row,
-   so scope the hide to the whole composer root, not just the card. */
-.GRgSLq_root:has(.GRgSLq_card[data-minimalui-collapsed]) .minimalui-stats { display: none; }
+/* The stats row is BELOW the card and the seat bottom-aligns its content, so
+   an instant display:none dropped the card ~28px in one frame at fold start
+   (the residual collapse jitter). Shrink it smoothly instead: the card follows
+   the shrinking strip down over the same 190ms as the fold. The fixed-position
+   .minimalui-popup is not clipped by overflow:hidden (no containing block), so
+   open popovers still render. */
+.GRgSLq_root:has(.GRgSLq_card[data-minimalui-collapsed]) .minimalui-stats {
+  max-height: 0; opacity: 0; pointer-events: none;
+}
 /* Keep + visible even if the host wraps it in a tooltip element. */
 .GRgSLq_card[data-minimalui-collapsed] .GRgSLq_tools > :has(.GRgSLq_add) { display: flex !important; }
 .GRgSLq_card[data-minimalui-collapsed] .GRgSLq_standardControls > *:not(:last-child) { display: none; }
@@ -619,14 +629,40 @@ html, body { overflow: hidden; overscroll-behavior: none; }
   --ds-transition-duration: 180ms;
   --ds-ease-in-out: var(--mui-ease-out);
 }
-/* Composer card: fade only, so the folded strip does not hard-cut; the height fold
-   itself is left to the host's own max-height/height rules to avoid fighting the
-   editor scroll area. */
-@media (prefers-reduced-motion: no-preference) {
-  .GRgSLq_scroll, .GRgSLq_input { transition: opacity 140ms ease; }
+/* The fold is a CSS grid accordion on the scroll port: grid-template-rows
+   1fr <-> 0fr interpolates in both directions (unlike auto <-> 0 keyword sizes),
+   so closing is as smooth as opening. The accordion layout is only used while
+   the draft is empty; once the user types, the port returns to its native block
+   layout so a multiline draft keeps its own scrollbar. The composer seat also
+   keeps a frozen outer height (set from JS) so the transcript above never moves. */
+[data-composer-card].GRgSLq_card:not(:has(.GRgSLq_input[data-minimalui-typed])) .GRgSLq_scroll {
+  display: grid;
+  grid-template-rows: 1fr;
 }
-.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_scroll,
-.GRgSLq_card[data-minimalui-collapsed] .GRgSLq_input { opacity: 0; }
+[data-composer-card].GRgSLq_card:not(:has(.GRgSLq_input[data-minimalui-typed])) .GRgSLq_scroll > * {
+  min-height: 0;
+  overflow: hidden;
+}
+[data-composer-card].GRgSLq_card[data-minimalui-collapsed]:not(:has(.GRgSLq_input[data-minimalui-typed])) .GRgSLq_scroll {
+  grid-template-rows: 0fr;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-composer-card].GRgSLq_card {
+    transition:
+      padding-top 190ms cubic-bezier(.25,.7,.3,1),
+      gap 190ms cubic-bezier(.25,.7,.3,1);
+  }
+  [data-composer-card].GRgSLq_card:not(:has(.GRgSLq_input[data-minimalui-typed])) .GRgSLq_scroll {
+    transition:
+      grid-template-rows 190ms cubic-bezier(.25,.7,.3,1),
+      opacity 140ms ease;
+  }
+  .GRgSLq_root .minimalui-stats {
+    transition:
+      max-height 190ms cubic-bezier(.25,.7,.3,1),
+      opacity 140ms ease;
+  }
+}
 `;
     // Question answers are user-style bubbles too, but use QuestionReply's own row/actions
     // (BfLV8a_*) under question-reply, not MessageIconActions under user/steering.
@@ -1561,6 +1597,33 @@ html, body { overflow: hidden; overscroll-behavior: none; }
       // (which would break the + menu) and must not unfold the bar either.
       let lastPointerWasControl = false;
       let lastPointerWithinComposer = false;
+      // The composer folds into a slim strip without moving the chat above. Two
+      // pieces cooperate: the scroll port folds through a CSS grid 1fr -> 0fr
+      // accordion (symmetric in both directions), and the composer seat keeps a
+      // frozen outer height so the scroll content height never changes.
+      const activeSeatOf = (card) => {
+        const seat = card.closest('[data-composer-seat]');
+        const content = card.closest('[data-conversation-content]');
+        return seat && content && content.getAttribute('data-content-phase') === 'active' ? seat : null;
+      };
+      // Height of the fully expanded composer in this seat. Measured by lifting the
+      // fold marker for one synchronous layout pass with transitions disabled, so
+      // no paint happens in between and the first expand after page load cannot
+      // push the transcript either.
+      const expandedSeatHeight = (card, seat) => {
+        if (!card.hasAttribute('data-minimalui-collapsed')) return seat.getBoundingClientRect().height;
+        const scroll = card.querySelector('.GRgSLq_scroll');
+        const cardTransition = card.style.transition;
+        const scrollTransition = scroll ? scroll.style.transition : '';
+        card.style.transition = 'none';
+        if (scroll) scroll.style.transition = 'none';
+        card.removeAttribute('data-minimalui-collapsed');
+        const height = seat.getBoundingClientRect().height;
+        card.setAttribute('data-minimalui-collapsed', '');
+        card.style.transition = cardTransition;
+        if (scroll) scroll.style.transition = scrollTransition;
+        return height;
+      };
       const sync = (editor) => {
         if (!editor) return;
         const hasText = (editor.textContent ?? '').trim().length > 0;
@@ -1568,8 +1631,30 @@ html, body { overflow: hidden; overscroll-behavior: none; }
         else editor.removeAttribute('data-minimalui-typed');
         const card = editor.closest?.(CARD);
         if (!card) return;
-        if (hasText || engaged.has(editor)) card.removeAttribute('data-minimalui-collapsed');
-        else card.setAttribute('data-minimalui-collapsed', '');
+        const wantCollapsed = !(hasText || engaged.has(editor));
+        const isCollapsed = card.hasAttribute('data-minimalui-collapsed');
+        if (wantCollapsed === isCollapsed) return;
+        const seat = activeSeatOf(card);
+        if (!card.__muiFoldSeen) {
+          // First observation (page load / freshly mounted composer): settle into the
+          // resting state and pin the seat to the expanded height so the transcript
+          // never jumps. Drop any stale frozen height from a previous card first.
+          card.__muiFoldSeen = true;
+          if (seat) {
+            seat.style.minHeight = '';
+            if (wantCollapsed) seat.style.minHeight = expandedSeatHeight(card, seat) + 'px';
+          }
+          if (wantCollapsed) card.setAttribute('data-minimalui-collapsed', '');
+          else card.removeAttribute('data-minimalui-collapsed');
+          return;
+        }
+        if (wantCollapsed && seat) {
+          // Fractional height (getBoundingClientRect, not offsetHeight) keeps the
+          // frozen seat on the exact same layout grid and avoids a sub-pixel shake.
+          seat.style.minHeight = seat.getBoundingClientRect().height + 'px';
+        }
+        if (wantCollapsed) card.setAttribute('data-minimalui-collapsed', '');
+        else card.removeAttribute('data-minimalui-collapsed');
       };
       const onInput = (event) => {
         const editor = event.target?.closest?.(EDITOR);
@@ -1656,6 +1741,24 @@ html, body { overflow: hidden; overscroll-behavior: none; }
         });
       };
       const onKeyDown = () => { lastInputWasKeyboard = true; };
+      // A window resize invalidates the frozen seat height (text wrapping and column
+      // width changed), so re-pin it to the freshly measured expanded height and keep
+      // the transcript still while the collapsed bar sits naturally again.
+      const onResize = () => {
+        doc.querySelectorAll('[data-composer-seat]').forEach((seat) => {
+          const card = seat.querySelector('.GRgSLq_card');
+          if (!card) {
+            seat.style.minHeight = '';
+            return;
+          }
+          seat.style.minHeight = '';
+          if (card.hasAttribute('data-minimalui-collapsed')) {
+            seat.style.minHeight = expandedSeatHeight(card, seat) + 'px';
+          }
+        });
+      };
+      const view = doc.defaultView;
+      if (view) view.addEventListener('resize', onResize);
       const observer = new MutationObserver((records) => {
         for (const record of records) {
           const target = record.target;
@@ -1677,6 +1780,7 @@ html, body { overflow: hidden; overscroll-behavior: none; }
       doc.querySelectorAll(EDITOR).forEach(sync);
       return () => {
         observer.disconnect();
+        if (view) view.removeEventListener('resize', onResize);
         doc.removeEventListener('input', onInput, true);
         doc.removeEventListener('focusin', onFocusIn, true);
         doc.removeEventListener('focusout', onFocusOut, true);

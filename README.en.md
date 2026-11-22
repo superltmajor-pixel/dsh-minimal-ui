@@ -16,14 +16,12 @@ This plugin adds no features; it only subtracts. Three principles run through ev
 
 Work can happen in the background, but what reaches the user should be the key, necessary information. So it adjusts elements the official interface already has — no new panels, no new entry points, no new workflows.
 
-## What's new in 0.10.52
+## What's new in 0.10.59
 
-- A single hamburger replaces the Windows caption's Application and Edit buttons. Both entries require a click or keyboard activation; hovering never opens a native menu.
-- Opaque light and dark menu colors, with retained desktop styles and obsolete event listeners refreshed on reload.
-- User-bubble timestamps and copy actions appear on hover or keyboard focus, including ordinary, steering, and question-reply messages; touch devices keep them visible.
-- A theme-aware plugin icon and smoother popover, sidebar, and composer transitions. Added popover and composer animations respect reduced-motion preferences.
-
-**Known limitation:** an open Windows native menu captures mouse input. The visible parent card cannot directly dismiss it or switch between Application and Edit. Close the native menu first (for example, with Escape), then reopen the hamburger and select the other entry. Unified custom submenus and a new desktop command interface are not included in this release.
+- The conversation column width is freely draggable: the default width is unchanged, and dragging either edge of the content resizes it. The preference is persisted by the host.
+- The composer fold animation is rebuilt: expanding and collapsing both animate smoothly, with zero movement of the chat above and no residual jitter.
+- The sidebar navigation and workspace list sit higher, tightening the empty space at the top.
+- Fixed the first expand after page load pushing the chat upward.
 
 ## Features
 
