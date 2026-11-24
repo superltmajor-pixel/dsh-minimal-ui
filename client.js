@@ -390,9 +390,11 @@ html, body { overflow: hidden; overscroll-behavior: none; }
   caret-color: var(--dsw-alias-state-business-primary) !important;
 }
 /* Fold keeps the transcript above perfectly still while the visible card really
-   shrinks: installCaretQuiet pins the composer seat's outer height to the expanded
-   value, so the scroll content height never changes and only the card's own box
-   folds (the scroll port itself is a 1fr <-> 0fr grid accordion). */
+   shrinks: installCaretQuiet holds the composer seat's outer height across the
+   change and repairs, in the same frame, any scroll position a clamp still
+   swallowed. The scroll port itself is a 1fr <-> 0fr grid accordion, and once the
+   fold settles the reservation is released wherever the shrink clamps nothing,
+   so a short or scrolled-up transcript reclaims the space instead. */
 .GRgSLq_card[data-minimalui-collapsed] { padding-top: 8px; gap: 0; }
 /* Constant toolbar floor in BOTH states: the expanded row is ~38px (34px send
    button + 4px pad), so a collapsed-only 40px floor made the row jump +2px at
@@ -1577,6 +1579,20 @@ html, body { overflow: hidden; overscroll-behavior: none; }
         doc.removeEventListener('pointercancel', stop, true);
       };
     }
+    // A fold or unfold changes the composer's own height inside the transcript's scroll
+    // box. Where the transcript sits on the floor of a scrollable column, the shrink makes
+    // the browser clamp scrollTop by the same amount and the whole conversation slides
+    // down; unfolding pushes it back up again. The fold delta cannot be predicted from the
+    // marker, so the seat holds its exact current height and a ResizeObserver repairs
+    // whatever a clamp still swallowed — after layout, before paint, so nothing flashes.
+    const FOLD_WINDOW_MS = 400;
+    const FOLD_SETTLE_MS = 260;
+    // How much scroll position a shrink swallowed. Only a positive result means the view
+    // was dragged; the half pixel keeps sub-pixel rounding out of the repair.
+    function foldScrollLoss(recordedTop, currentTop) {
+      const lost = recordedTop - currentTop;
+      return lost > 0.5 ? lost : 0;
+    }
     // Hide the caret in an empty composer without touching focus: the host autofocuses the
     // editor on every page, and a blurred box cannot be typed into. CSS alone can only see
     // "hovered", not "has text", so track emptiness here and let the stylesheet read the
@@ -1597,32 +1613,102 @@ html, body { overflow: hidden; overscroll-behavior: none; }
       // (which would break the + menu) and must not unfold the bar either.
       let lastPointerWasControl = false;
       let lastPointerWithinComposer = false;
-      // The composer folds into a slim strip without moving the chat above. Two
-      // pieces cooperate: the scroll port folds through a CSS grid 1fr -> 0fr
-      // accordion (symmetric in both directions), and the composer seat keeps a
-      // frozen outer height so the scroll content height never changes.
+      // The composer folds into a slim strip without moving the chat above. Three pieces
+      // cooperate: the scroll port folds through a CSS grid 1fr -> 0fr accordion (symmetric
+      // in both directions), the composer seat holds its current outer height across the
+      // change so the scroll content height stays constant, and a same-frame repair puts
+      // back any scroll position a clamp still swallowed.
       const activeSeatOf = (card) => {
         const seat = card.closest('[data-composer-seat]');
         const content = card.closest('[data-conversation-content]');
         return seat && content && content.getAttribute('data-content-phase') === 'active' ? seat : null;
       };
-      // Height of the fully expanded composer in this seat. Measured by lifting the
-      // fold marker for one synchronous layout pass with transitions disabled, so
-      // no paint happens in between and the first expand after page load cannot
-      // push the transcript either.
-      const expandedSeatHeight = (card, seat) => {
-        if (!card.hasAttribute('data-minimalui-collapsed')) return seat.getBoundingClientRect().height;
+      // Height of this seat with the fold marker in the requested state. Measuring the
+      // other state costs one synchronous layout pass with every transition disabled, so
+      // no paint happens in between and the first expand after page load cannot push the
+      // transcript either.
+      const measureSeat = (card, seat, collapsed) => {
+        if (card.hasAttribute('data-minimalui-collapsed') === collapsed) {
+          return seat.getBoundingClientRect().height;
+        }
         const scroll = card.querySelector('.GRgSLq_scroll');
+        const stats = card.closest('.GRgSLq_root')?.querySelector('.minimalui-stats');
         const cardTransition = card.style.transition;
         const scrollTransition = scroll ? scroll.style.transition : '';
+        const statsTransition = stats ? stats.style.transition : '';
         card.style.transition = 'none';
         if (scroll) scroll.style.transition = 'none';
-        card.removeAttribute('data-minimalui-collapsed');
+        // The stats strip folds on its own max-height transition; without pinning it the
+        // measurement would read the pre-fold 28px and understate the fold delta.
+        if (stats) stats.style.transition = 'none';
+        if (collapsed) card.setAttribute('data-minimalui-collapsed', '');
+        else card.removeAttribute('data-minimalui-collapsed');
         const height = seat.getBoundingClientRect().height;
-        card.setAttribute('data-minimalui-collapsed', '');
+        if (collapsed) card.removeAttribute('data-minimalui-collapsed');
+        else card.setAttribute('data-minimalui-collapsed', '');
         card.style.transition = cardTransition;
         if (scroll) scroll.style.transition = scrollTransition;
+        if (stats) stats.style.transition = statsTransition;
         return height;
+      };
+      // One fold window per scroll port: the scroll position recorded when the fold began,
+      // and the moment the repair stops. A deliberate scroll closes the window early so the
+      // user's own movement is never undone.
+      const foldWindows = new WeakMap();
+      const settleTimers = new WeakMap();
+      const clearSettle = (seat) => {
+        const timer = settleTimers.get(seat);
+        if (timer) {
+          clearTimeout(timer);
+          settleTimers.delete(seat);
+        }
+      };
+      // Release the reservation once the fold has settled. Clearing it is the only reliable
+      // test of whether the transcript can absorb the shrink: if scrollTop gets clamped, the
+      // band was doing real work, so it is restored in the same frame.
+      const settleSeat = (card, seat) => {
+        settleTimers.delete(seat);
+        if (!seat.isConnected || !seat.style.minHeight) return;
+        const scroller = card.closest('[data-conversation-scroll]');
+        if (!scroller) return;
+        const held = seat.style.minHeight;
+        const top = scroller.scrollTop;
+        seat.style.minHeight = '';
+        if (!foldScrollLoss(top, scroller.scrollTop)) return;
+        seat.style.minHeight = held;
+        scroller.scrollTop = top;
+      };
+      // Whatever the hold missed (a nested shrink, an interrupted transition, a fold the
+      // marker did not describe) shows up as a smaller scrollTop in the same frame; hand the
+      // lost height back and put the transcript where it was. ResizeObserver callbacks run
+      // after layout and before paint, so the repair never shows.
+      const seatObserver = typeof ResizeObserver === 'function'
+        ? new ResizeObserver((entries) => {
+          for (const entry of entries) {
+            const seat = entry.target;
+            const card = seat.querySelector(CARD);
+            if (!card) continue;
+            const scroller = card.closest('[data-conversation-scroll]');
+            const span = scroller ? foldWindows.get(scroller) : null;
+            if (!span || Date.now() > span.until) continue;
+            const lost = foldScrollLoss(span.top, scroller.scrollTop);
+            if (!lost) continue;
+            seat.style.minHeight = (seat.getBoundingClientRect().height + lost) + 'px';
+            scroller.scrollTop = span.top;
+          }
+        })
+        : null;
+      // Hold the seat at the height it has right now: exact by construction, so the fold
+      // cannot change the scroll content height in the first place. A transcript that is
+      // short or scrolled up still reclaims the space, because the settle pass releases the
+      // reservation whenever the shrink clamps nothing.
+      const holdSeat = (card, seat, freeze) => {
+        clearSettle(seat);
+        if (seatObserver) seatObserver.observe(seat);
+        if (freeze) seat.style.minHeight = seat.getBoundingClientRect().height + 'px';
+        const scroller = card.closest('[data-conversation-scroll]');
+        if (scroller) foldWindows.set(scroller, { top: scroller.scrollTop, until: Date.now() + FOLD_WINDOW_MS });
+        settleTimers.set(seat, setTimeout(() => settleSeat(card, seat), FOLD_SETTLE_MS));
       };
       const sync = (editor) => {
         if (!editor) return;
@@ -1637,22 +1723,14 @@ html, body { overflow: hidden; overscroll-behavior: none; }
         const seat = activeSeatOf(card);
         if (!card.__muiFoldSeen) {
           // First observation (page load / freshly mounted composer): settle into the
-          // resting state and pin the seat to the expanded height so the transcript
-          // never jumps. Drop any stale frozen height from a previous card first.
+          // resting state and hold the seat so the transcript never jumps. Drop any stale
+          // frozen height from a previous card first.
           card.__muiFoldSeen = true;
-          if (seat) {
-            seat.style.minHeight = '';
-            if (wantCollapsed) seat.style.minHeight = expandedSeatHeight(card, seat) + 'px';
-          }
-          if (wantCollapsed) card.setAttribute('data-minimalui-collapsed', '');
-          else card.removeAttribute('data-minimalui-collapsed');
-          return;
+          if (seat) seat.style.minHeight = '';
         }
-        if (wantCollapsed && seat) {
-          // Fractional height (getBoundingClientRect, not offsetHeight) keeps the
-          // frozen seat on the exact same layout grid and avoids a sub-pixel shake.
-          seat.style.minHeight = seat.getBoundingClientRect().height + 'px';
-        }
+        // Hold BEFORE the marker flips: the fold only changes the composer's own height, so
+        // pinning it first means the scroll content height never changes at all.
+        if (seat) holdSeat(card, seat, wantCollapsed);
         if (wantCollapsed) card.setAttribute('data-minimalui-collapsed', '');
         else card.removeAttribute('data-minimalui-collapsed');
       };
@@ -1742,20 +1820,33 @@ html, body { overflow: hidden; overscroll-behavior: none; }
       };
       const onKeyDown = () => { lastInputWasKeyboard = true; };
       // A window resize invalidates the frozen seat height (text wrapping and column
-      // width changed), so re-pin it to the freshly measured expanded height and keep
-      // the transcript still while the collapsed bar sits naturally again.
+      // width changed), so re-evaluate it: pin again where the transcript sits on the
+      // floor, release it where the fold cannot move anything.
       const onResize = () => {
         doc.querySelectorAll('[data-composer-seat]').forEach((seat) => {
           const card = seat.querySelector('.GRgSLq_card');
           if (!card) {
+            clearSettle(seat);
             seat.style.minHeight = '';
             return;
           }
-          seat.style.minHeight = '';
-          if (card.hasAttribute('data-minimalui-collapsed')) {
-            seat.style.minHeight = expandedSeatHeight(card, seat) + 'px';
+          if (!card.hasAttribute('data-minimalui-collapsed')) {
+            clearSettle(seat);
+            seat.style.minHeight = '';
+            return;
           }
+          // The held pixel height is stale after a resize: measure the expanded height
+          // again for the new column width, then let the settle pass decide whether it is
+          // still needed.
+          seat.style.minHeight = measureSeat(card, seat, false) + 'px';
+          holdSeat(card, seat, false);
         });
+      };
+      // Scrolling on purpose during a fold window cancels the repair: the user's own
+      // movement is never undone.
+      const onFoldScroll = (event) => {
+        const scroller = event.target?.closest?.('[data-conversation-scroll]');
+        if (scroller) foldWindows.delete(scroller);
       };
       const view = doc.defaultView;
       if (view) view.addEventListener('resize', onResize);
@@ -1777,15 +1868,24 @@ html, body { overflow: hidden; overscroll-behavior: none; }
       doc.addEventListener('focusout', onFocusOut, true);
       doc.addEventListener('pointerdown', onPointerDown, true);
       doc.addEventListener('keydown', onKeyDown, true);
+      doc.addEventListener('wheel', onFoldScroll, { capture: true, passive: true });
+      doc.addEventListener('touchmove', onFoldScroll, { capture: true, passive: true });
       doc.querySelectorAll(EDITOR).forEach(sync);
       return () => {
         observer.disconnect();
+        if (seatObserver) seatObserver.disconnect();
+        doc.querySelectorAll('[data-composer-seat]').forEach((seat) => {
+          clearSettle(seat);
+          seat.style.minHeight = '';
+        });
         if (view) view.removeEventListener('resize', onResize);
         doc.removeEventListener('input', onInput, true);
         doc.removeEventListener('focusin', onFocusIn, true);
         doc.removeEventListener('focusout', onFocusOut, true);
         doc.removeEventListener('pointerdown', onPointerDown, true);
         doc.removeEventListener('keydown', onKeyDown, true);
+        doc.removeEventListener('wheel', onFoldScroll, { capture: true });
+        doc.removeEventListener('touchmove', onFoldScroll, { capture: true });
       };
     }
     function MinimalUI() {
@@ -1866,12 +1966,79 @@ html, body { overflow: hidden; overscroll-behavior: none; }
       .mrow .mlabel { flex: 0 0 auto; }
       .mrow .arrow { font-size: 15px; line-height: 1; opacity: .65; }
     `;
+    const CAPTION_DISMISS_DELAY_MS = 180;
+    const CAPTION_PRESS_TIMEOUT_MS = 4000;
+
+    function createCaptionMenuHandoff({ activeNative, openNative, close }) {
+      let dismissedNative;
+      let pendingClick;
+      let pressedPointer;
+      let dismissTimer;
+
+      function reset() {
+        clearTimeout(dismissTimer);
+        dismissedNative = undefined;
+        pendingClick = undefined;
+        pressedPointer = undefined;
+      }
+
+      function deferDismiss() {
+        clearTimeout(dismissTimer);
+        // Bound the wait if a press leaves the window and never releases here.
+        const delay = pressedPointer === undefined ? CAPTION_DISMISS_DELAY_MS : CAPTION_PRESS_TIMEOUT_MS;
+        dismissTimer = setTimeout(close, delay);
+      }
+
+      function activate(target, row, pointerClick = false) {
+        const active = activeNative();
+        if (active) {
+          // A reposted click can arrive before the preload reports dismissal.
+          if (pointerClick) pendingClick = { active, target, row, time: Date.now() };
+          return;
+        }
+        if (target === dismissedNative) {
+          close();
+          return;
+        }
+        reset();
+        openNative(target, row);
+      }
+
+      return {
+        activate,
+        press(pointerId) {
+          if (!activeNative() && !dismissedNative) return;
+          pressedPointer = pointerId;
+          if (dismissedNative) deferDismiss();
+        },
+        release(pointerId) {
+          if (pressedPointer !== pointerId) return;
+          pressedPointer = undefined;
+          if (dismissedNative) deferDismiss();
+        },
+        closed(target) {
+          // Keep the row under the pointer available for the outside press that
+          // Chromium may repost to the window after dismissing its native popup.
+          dismissedNative = target;
+          const next = pendingClick;
+          pendingClick = undefined;
+          if (next?.active === target && Date.now() - next.time < CAPTION_PRESS_TIMEOUT_MS) {
+            activate(next.target, next.row);
+          } else {
+            deferDismiss();
+          }
+        },
+        reset,
+      };
+    }
+
     function installWindowsCaptionMenu() {
       if (typeof document === 'undefined') return () => {};
       let shadowObserver = null;
       let nativeStateObserver = null;
       let styledHost = null;
       let wiredTrigger = null;
+      let captionHandoff = null;
       // Restore the composer's focus and selection before handing Edit to the
       // desktop so native commands still target the original editor.
       let lastEditable = null;
@@ -1910,6 +2077,7 @@ html, body { overflow: hidden; overscroll-behavior: none; }
         } catch (error) { /* selection restore is best-effort */ }
       };
       const closeHostPanel = (host) => {
+        captionHandoff?.reset();
         const shadow = host?.shadowRoot;
         if (!shadow) return;
         shadow.querySelector('[data-minimalui-caption-panel]')?.setAttribute('hidden', '');
@@ -1963,22 +2131,29 @@ html, body { overflow: hidden; overscroll-behavior: none; }
         if (trigger.__minimaluiCaptionWired) return;
         wiredTrigger = trigger;
         trigger.__minimaluiCaptionWired = true;
-        // Open one native popup anchored just to the right of a dropdown row, using the
-        // hidden native button's own handler (it reads its rect synchronously before
-        // awaiting IPC). A transform shifts the anchor without fighting the !important CSS.
-        const openNative = (target, item) => {
+        const close = () => closeHostPanel(host);
+        const activeNative = () => natives.find((button) => button.getAttribute('aria-expanded') === 'true');
+        let previousNative = activeNative();
+        // Anchor the host's original popup at the row's right. The hidden button
+        // reads its rect synchronously before asking the desktop to open the menu.
+        const openNative = (target, row) => {
+          if (!panel.isConnected || panel.hidden || !panel.contains(row)) return;
+          if (target === editBtn) restoreEditable();
           try {
-            if (natives.some((native) => native.getAttribute('aria-expanded') === 'true')) return;
             const base = target.getBoundingClientRect();
-            const row = item.getBoundingClientRect();
             const dx = Math.round(panel.getBoundingClientRect().right - base.left);
-            const dy = Math.round(row.top - base.bottom);
+            const dy = Math.round(row.getBoundingClientRect().top - base.bottom);
             target.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
             target.click();
-            target.style.transform = '';
-          } catch (error) {
+          } finally {
             target.style.transform = '';
           }
+        };
+        captionHandoff?.reset();
+        const handoff = createCaptionMenuHandoff({ activeNative, openNative, close });
+        captionHandoff = handoff;
+        const trackPress = (event) => {
+          if (!panel.hidden && event.isPrimary && event.button === 0) handoff.press(event.pointerId);
         };
         const syncLabels = () => {
           const rows = [
@@ -1996,22 +2171,17 @@ html, body { overflow: hidden; overscroll-behavior: none; }
             const arrow = document.createElement('span'); arrow.className = 'arrow'; arrow.textContent = '›';
             arrow.setAttribute('aria-hidden', 'true');
             row.append(lbl, arrow);
-            const activate = () => {
-              if (panel.hidden) return;
-              if (nativeTarget === editBtn) restoreEditable();
-              openNative(nativeTarget, row);
-            };
-            // Both native menus require explicit activation: hovering never takes
-            // over the pointer or prevents reaching the other row.
+            row.addEventListener('pointerdown', trackPress);
+            // Hover still only highlights the row. Only a complete click switches menus.
             row.addEventListener('click', (event) => {
               event.preventDefault();
               event.stopPropagation();
-              activate();
+              handoff.activate(nativeTarget, row, event.detail > 0);
             });
             row.addEventListener('keydown', (event) => {
               if (event.key === 'ArrowRight' || event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
-                activate();
+                handoff.activate(nativeTarget, row);
               } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
                 event.preventDefault();
                 const next = (index + (event.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length;
@@ -2022,29 +2192,25 @@ html, body { overflow: hidden; overscroll-behavior: none; }
           }));
         };
         const open = () => {
+          handoff.reset();
           syncLabels();
           panel.removeAttribute('hidden');
           trigger.setAttribute('aria-expanded', 'true');
         };
-        const close = () => {
-          panel.setAttribute('hidden', '');
-          trigger.setAttribute('aria-expanded', 'false');
-        };
-        // The preload exposes each native popup's lifetime on its original
-        // button. Keep our parent visible until that popup is dismissed.
-        let nativeWasOpen = false;
         const syncNativeState = () => {
-          const active = natives.findIndex((native) => native.getAttribute('aria-expanded') === 'true');
+          const active = activeNative();
           const rows = panel.querySelectorAll(':scope > .mrow');
-          rows.forEach((row, index) => row.setAttribute('aria-expanded', String(index === active)));
-          if (nativeWasOpen && active === -1) close();
-          nativeWasOpen = active !== -1;
+          rows.forEach((row, index) => row.setAttribute('aria-expanded', String(natives[index] === active)));
+          const ended = previousNative;
+          previousNative = active;
+          if (!active && ended && !panel.hidden) handoff.closed(ended);
         };
         nativeStateObserver?.disconnect();
         nativeStateObserver = new MutationObserver(syncNativeState);
         for (const native of natives) {
           nativeStateObserver.observe(native, { attributes: true, attributeFilter: ['aria-expanded'] });
         }
+        trigger.addEventListener('pointerdown', trackPress);
         trigger.addEventListener('click', (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -2087,16 +2253,22 @@ html, body { overflow: hidden; overscroll-behavior: none; }
         if (event.composedPath().includes(styledHost)) return;
         closeHostPanel(styledHost);
       };
+      const onPointerEnd = (event) => captionHandoff?.release(event.pointerId);
       const onKey = (event) => {
         if (event.key === 'Escape' && styledHost !== null && styledHost.isConnected) closeHostPanel(styledHost);
       };
       document.addEventListener('pointerdown', onPointer, true);
+      document.addEventListener('pointerup', onPointerEnd, true);
+      document.addEventListener('pointercancel', onPointerEnd, true);
       document.addEventListener('keydown', onKey, true);
       return () => {
         bodyObserver.disconnect();
         if (shadowObserver !== null) shadowObserver.disconnect();
         nativeStateObserver?.disconnect();
+        captionHandoff?.reset();
         document.removeEventListener('pointerdown', onPointer, true);
+        document.removeEventListener('pointerup', onPointerEnd, true);
+        document.removeEventListener('pointercancel', onPointerEnd, true);
         document.removeEventListener('keydown', onKey, true);
         document.removeEventListener('focusout', onFocusOut, true);
         if (styledHost !== null && styledHost.isConnected) {

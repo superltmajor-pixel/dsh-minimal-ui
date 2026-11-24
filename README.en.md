@@ -16,12 +16,12 @@ This plugin adds no features; it only subtracts. Three principles run through ev
 
 Work can happen in the background, but what reaches the user should be the key, necessary information. So it adjusts elements the official interface already has — no new panels, no new entry points, no new workflows.
 
-## What's new in 0.10.59
+## What's new in 0.10.62
 
+- Zero movement of the chat above when the composer collapses or expands: the composer's outer height is held before the fold starts, and any scroll position a clamp still swallows is restored within the same frame. The transparent band above the folded bar only remains where the transcript overflows and sits on the floor; everywhere else the fold reclaims the space.
+- The Windows title-bar "Application" and "Edit" menus now switch with a single click: the parent panel stays briefly when the native menu closes, so the click aimed at the other row lands on it instead of the new-session entry underneath.
 - The conversation column width is freely draggable: the default width is unchanged, and dragging either edge of the content resizes it. The preference is persisted by the host.
-- The composer fold animation is rebuilt: expanding and collapsing both animate smoothly, with zero movement of the chat above and no residual jitter.
 - The sidebar navigation and workspace list sit higher, tightening the empty space at the top.
-- Fixed the first expand after page load pushing the chat upward.
 
 ## Features
 
@@ -87,13 +87,13 @@ The plugin never modifies official source; everything is injected styles and mou
 
 ## Compatibility
 
-The current source targets the **DSH 0.2.2-rc.2 Web UI** and was developed on the Windows desktop client; earlier releases were also checked on 0.2.2-rc.1. Verification for 0.10.52 includes six package-level self-checks and browser interaction checks using the actual source. The author has confirmed desktop menu colors; native menu input capture still has the known limitation above. An isolated browser cannot model operating-system popup input capture, and interface acceptance in a fresh profile has not been completed. The plugin depends on some host-internal layout and CSS class names, so other DSH versions and platforms are unverified; the package declares `>=0.2.2-rc.1 <0.2.3-0`.
+The current source targets the **DSH 0.2.2-rc.2 Web UI** and was developed on the Windows desktop client; earlier releases were also checked on 0.2.2-rc.1. Verification for 0.10.62 includes six package-level self-checks plus targeted logic checks for the composer fold and the title-bar menu; the fold measurements come from frame-by-frame analysis of a real desktop recording. Native menu input capture and the final feel of the title-bar single-click switch still need desktop confirmation — an isolated browser cannot model operating-system popup input capture, and interface acceptance in a fresh profile has not been completed. The plugin depends on some host-internal layout and CSS class names, so other DSH versions and platforms are unverified; the package declares `>=0.2.2-rc.1 <0.2.3-0`.
 
 Because it changes layout, it may conflict with other plugins that modify the same areas. If you previously installed a local development build, disable it first so two copies do not adjust the same interface.
 
 ## Install
 
-From npm (current version `dsh-minimal-ui@0.10.52`):
+From npm (current version `dsh-minimal-ui@0.10.62`):
 
 ```sh
 dsh plugin --profile web add dsh-minimal-ui
