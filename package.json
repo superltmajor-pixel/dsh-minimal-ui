@@ -11,7 +11,20 @@
   },
   "homepage": "https://github.com/superltmajor-pixel/dsh-minimal-ui#readme",
   "bugs": "https://github.com/superltmajor-pixel/dsh-minimal-ui/issues",
-  "keywords": ["dsh-plugin", "deepseek-harness", "user-interface"],
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "dsh",
+    "deepseek",
+    "user-interface",
+    "ui",
+    "minimal-ui",
+    "theme",
+    "chat-ui",
+    "desktop-app",
+    "markdown",
+    "typography"
+  ],
   "scripts": {
     "test": "node tests/package-check.mjs && node tests/boot-check.mjs && node tests/metrics-check.mjs && node tests/guide-check.mjs && node tests/theme-check.mjs && node tests/todo-check.mjs"
   },
